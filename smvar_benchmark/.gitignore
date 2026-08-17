@@ -1,0 +1,7 @@
+# Third-party tool binary, not authored code -- see README.md
+# ("Prerequisites") for where to download it.
+scripts/tools/aardvark
+
+# Generated output -- created by the scripts, never shipped/committed.
+# See README.md ("Folder layout").
+results/

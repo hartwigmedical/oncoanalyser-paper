@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+# Regenerates the "Preliminary results" manuscript tables from scratch, for
+# BOTH the original (full-depth) and downsampled (~30x normal / ~90x tumor)
+# query VCFs.
+#
+# Original: 4 pipeline/technology combinations (DRAGEN, Illumina SAGE/PURPLE,
+# SBX SAGE/PURPLE, Ultima SAGE/PURPLE).
+# Downsampled: 3 combinations (Illumina/SBX/Ultima SAGE/PURPLE) -- DRAGEN has
+# no downsampled VCF, so it's omitted from the downsampled tables entirely.
+#
+# Both run against the same 5 confidence-region tiers:
+#   1. widest         -- all.bed (no germline-interference exclusion, no HCR)
+#   2. giabhcr         -- all.bed ∩ GIAB_hcr.bed
+#   3. ultimahcr        -- all.bed ∩ ug_hcr_true.bed
+#   4. giabhcr_ni50    -- nogermlinewithin50bp.bed ∩ GIAB_hcr.bed
+#   5. ultimahcr_ni50   -- nogermlinewithin50bp.bed ∩ ug_hcr_true.bed
+#
+# All runs use the finalized methodology: full PON/PONGnomad rescue
+# (rescue_filter="PONGnomad,PON;PONGnomad,PON") -- see README.md
+# ("Relaxing PONGnomad") for why this replaced symmetric region masking.
+#
+# Output (all under results/):
+#   Preliminary_results_wigits_manuscript.tsv (+_SNV/_Insertion/_Deletion)
+#     -- original, 20 rows (4 pipelines x 5 tiers), ALL-variant-type +
+#        per-variant-type GT-mode numbers.
+#   Preliminary_results_wigits_manuscript_downsampled.tsv (+_SNV/_Insertion/_Deletion)
+#     -- downsampled, 15 rows (3 pipelines x 5 tiers).
+#
+# Safe to re-run: uses fixed run_ids (manuscript_<pipeline>_<tier> /
+# manuscript_ds_<pipeline>_<tier>); if a run_id already exists under
+# results/runs/, that run is skipped and its cached ledger rows are reused
+# (per run_benchmark.sh's own safety check). Delete results/runs/<run_id>/
+# and its results.tsv rows to force a specific run to redo.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REFDATA_DIR="$ROOT_DIR/data/reference_data"
+VCF_DIR="$ROOT_DIR/data/query_vcfs"
+RESULTS_DIR="$ROOT_DIR/results"
+RESULTS_TSV="$RESULTS_DIR/results.tsv"
+
+export PATH="/opt/homebrew/bin:$PATH"
+
+mkdir -p "$RESULTS_DIR/logs"
+
+RESCUE="PONGnomad,PON;PONGnomad,PON"
+
+echo "[0/2] Building any missing confidence-region BED tiers..."
+build_tier () {
+  local out="$REFDATA_DIR/regions/HG008-T_somatic_smvar_benchmark_v0.3_$1.bed"
+  local a="$REFDATA_DIR/regions/HG008-T_somatic_smvar_benchmark_v0.3_$2.bed"
+  local b="$3"
+  if [ ! -f "$out" ]; then
+    echo "  building $1.bed = $2.bed ∩ $(basename "$b")"
+    bedtools intersect -a "$a" -b "$b" > "$out"
+  fi
+}
+build_tier "all_giabhcr" "all" "$REFDATA_DIR/regions/GIAB_hcr.bed"
+build_tier "all_hcr" "all" "$REFDATA_DIR/regions/ug_hcr_true.bed"
+build_tier "nogermlinewithin50bp_giabhcr" "nogermlinewithin50bp" "$REFDATA_DIR/regions/GIAB_hcr.bed"
+build_tier "nogermlinewithin50bp_hcr" "nogermlinewithin50bp" "$REFDATA_DIR/regions/ug_hcr_true.bed"
+
+# pipeline_key:tech_label:query_vcf:query_sample
+ORIGINAL_PIPELINES=(
+  "dragen:illumina_dragen:$VCF_DIR/original/dragen_4.2.4_HG008-mosaic_tumor.hard-filtered.vcf.gz:HG008-T-mosaic"
+  "ilmnpurple:illumina_purple:$VCF_DIR/original/HG008T-il.purple.somatic.vcf.gz:HG008T"
+  "sbxr:sbx_purple:$VCF_DIR/original/HG008T-sbx-r.purple.somatic.vcf.gz:HG008T"
+  "ultimapurple:ultima_purple:$VCF_DIR/original/HG008T-ult.purple.somatic.vcf.gz:HG008T"
+)
+# no DRAGEN downsampled VCF exists -- omitted from the downsampled set
+DOWNSAMPLED_PIPELINES=(
+  "ilmnpurple:illumina_purple_ds:$VCF_DIR/downsampled/HG008T-il.ds.purple.somatic.vcf.gz:HG008T"
+  "sbxr:sbx_purple_ds:$VCF_DIR/downsampled/HG008T-sbx-r.ds.purple.somatic.vcf.gz:HG008T"
+  "ultimapurple:ultima_purple_ds:$VCF_DIR/downsampled/HG008T-ult.ds.purple.somatic.vcf.gz:HG008T"
+)
+
+# tier_key:bed_tier
+TIERS=(
+  "widest:all"
+  "giabhcr:all_giabhcr"
+  "ultimahcr:all_hcr"
+  "giabhcr_ni50:nogermlinewithin50bp_giabhcr"
+  "ultimahcr_ni50:nogermlinewithin50bp_hcr"
+)
+
+run_all () {
+  local run_prefix="$1"; shift
+  for pipeline in "$@"; do
+    IFS=: read -r pkey tech vcf sample <<< "$pipeline"
+    for tier in "${TIERS[@]}"; do
+      IFS=: read -r tkey bed_tier <<< "$tier"
+      run_id="${run_prefix}_${pkey}_${tkey}"
+      RUN_IDS+=("$run_id")
+      if [ -d "$RESULTS_DIR/runs/$run_id" ]; then
+        echo "  $run_id already exists, skipping run (reusing cached result)"
+        continue
+      fi
+      echo "  running $run_id ($tech, tier=$bed_tier)"
+      "$SCRIPT_DIR/run_benchmark.sh" "$run_id" "$tech" "$vcf" "$sample" "$bed_tier" "$RESCUE" \
+        > "$RESULTS_DIR/logs/$run_id.log" 2>&1
+    done
+  done
+}
+
+echo "[1/2] Running all 20 original pipeline x tier combinations..."
+RUN_IDS=()
+run_all "manuscript" "${ORIGINAL_PIPELINES[@]}"
+ORIGINAL_RUN_IDS=("${RUN_IDS[@]}")
+
+echo "[1/2] Running all 15 downsampled pipeline x tier combinations..."
+RUN_IDS=()
+run_all "manuscript_ds" "${DOWNSAMPLED_PIPELINES[@]}"
+DOWNSAMPLED_RUN_IDS=("${RUN_IDS[@]}")
+
+echo "[2/2] Building manuscript tables from the ledger..."
+python3 "$SCRIPT_DIR/build_manuscript_tables.py" \
+  --results-tsv "$RESULTS_TSV" \
+  --out-tsv "$RESULTS_DIR/Preliminary_results_wigits_manuscript.tsv" \
+  --original-run-ids "${ORIGINAL_RUN_IDS[@]}" \
+  --downsampled-run-ids "${DOWNSAMPLED_RUN_IDS[@]}"
+
+echo "Done."
