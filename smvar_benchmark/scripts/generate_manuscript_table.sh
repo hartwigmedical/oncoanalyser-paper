@@ -37,7 +37,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REFDATA_DIR="$ROOT_DIR/data/reference_data"
-VCF_DIR="$ROOT_DIR/data/query_vcfs"
+VCF_DIR="$ROOT_DIR/data"
 RESULTS_DIR="$ROOT_DIR/results"
 RESULTS_TSV="$RESULTS_DIR/results.tsv"
 
@@ -63,17 +63,30 @@ build_tier "nogermlinewithin50bp_giabhcr" "nogermlinewithin50bp" "$REFDATA_DIR/r
 build_tier "nogermlinewithin50bp_hcr" "nogermlinewithin50bp" "$REFDATA_DIR/regions/ug_hcr_true.bed"
 
 # pipeline_key:tech_label:query_vcf:query_sample
+#
+# Paths follow the manuscript-wide convention (2026-08-27 restructure):
+# data/<SEQ_Tech>/<sampleId>/<sampleId>.<stage>.somatic.vcf.gz (and a
+# <SEQ_Tech>_ds variant for downsampled data), sampleId being the tumor
+# sample name in the VCF -- matches how the rest of the manuscript's
+# (many more) samples are organized.
+#
+# SBX: the original (full-depth) set uses the finalized sbx-r-f release
+# (see README.md -- "SBX pipeline finalized to sbx-r-f"). The downsampled
+# set is intentionally still on the preceding sbx-r release -- no
+# downsampled sbx-r-f SAGE file exists yet; update DOWNSAMPLED_PIPELINES
+# once one is produced. Superseded original-depth sbx-r files live under
+# data/_legacy_sbx_versions/, outside this convention.
 ORIGINAL_PIPELINES=(
-  "dragen:illumina_dragen:$VCF_DIR/original/dragen_4.2.4_HG008-mosaic_tumor.hard-filtered.vcf.gz:HG008-T-mosaic"
-  "ilmnpurple:illumina_purple:$VCF_DIR/original/HG008T-il.purple.somatic.vcf.gz:HG008T"
-  "sbxr:sbx_purple:$VCF_DIR/original/HG008T-sbx-r.purple.somatic.vcf.gz:HG008T"
-  "ultimapurple:ultima_purple:$VCF_DIR/original/HG008T-ult.purple.somatic.vcf.gz:HG008T"
+  "dragen:illumina_dragen:$VCF_DIR/Dragen/HG008-T-mosaic/HG008-T-mosaic.hard-filtered.vcf.gz:HG008-T-mosaic"
+  "ilmnpurple:illumina_purple:$VCF_DIR/Ilmn/HG008T/HG008T.purple.somatic.vcf.gz:HG008T"
+  "sbxrf:sbx_purple:$VCF_DIR/SBX/HG008T/HG008T.purple.somatic.vcf.gz:HG008T"
+  "ultimapurple:ultima_purple:$VCF_DIR/Ultima/HG008T/HG008T.purple.somatic.vcf.gz:HG008T"
 )
 # no DRAGEN downsampled VCF exists -- omitted from the downsampled set
 DOWNSAMPLED_PIPELINES=(
-  "ilmnpurple:illumina_purple_ds:$VCF_DIR/downsampled/HG008T-il.ds.purple.somatic.vcf.gz:HG008T"
-  "sbxr:sbx_purple_ds:$VCF_DIR/downsampled/HG008T-sbx-r.ds.purple.somatic.vcf.gz:HG008T"
-  "ultimapurple:ultima_purple_ds:$VCF_DIR/downsampled/HG008T-ult.ds.purple.somatic.vcf.gz:HG008T"
+  "ilmnpurple:illumina_purple_ds:$VCF_DIR/Ilmn_ds/HG008T/HG008T.purple.somatic.vcf.gz:HG008T"
+  "sbxr:sbx_purple_ds:$VCF_DIR/SBX_ds/HG008T/HG008T.purple.somatic.vcf.gz:HG008T"
+  "ultimapurple:ultima_purple_ds:$VCF_DIR/Ultima_ds/HG008T/HG008T.purple.somatic.vcf.gz:HG008T"
 )
 
 # tier_key:bed_tier

@@ -16,12 +16,29 @@ skip work that's already done and never overwrite existing output.
 
 ## Folder layout
 
+Query VCFs follow the manuscript-wide convention (2026-08-27
+restructure): `data/<SEQ_Tech>/<sampleId>/<sampleId>.<stage>.somatic.vcf.gz`,
+`sampleId` being the tumor sample name inside the VCF — matching how the
+rest of the manuscript's (many more) samples are organized. `<SEQ_Tech>`
+is one of `Dragen`/`Ilmn`/`SBX`/`Ultima`, plus a `<SEQ_Tech>_ds` variant
+for downsampled data.
+
 ```
 data/
-  query_vcfs/
-    original/        Full-depth query VCFs: DRAGEN, Illumina, SBX (sbx-r), Ultima
-                      (each SAGE + PURPLE stage, tumor/normal paired, bgzipped+tabixed)
-    downsampled/      ~30x/90x downsampled query VCFs: Illumina, SBX, Ultima only
+  Dragen/HG008-T-mosaic/    HG008-T-mosaic.hard-filtered.vcf.gz(.tbi)
+  Ilmn/HG008T/              HG008T.{sage,purple}.somatic.vcf.gz(.tbi)
+  SBX/HG008T/               HG008T.{sage,purple}.somatic.vcf.gz(.tbi)     -- sbx-r-f
+  Ultima/HG008T/            HG008T.{sage,purple}.somatic.vcf.gz(.tbi)
+  Ilmn_ds/HG008T/           ~30x/90x downsampled Illumina
+  SBX_ds/HG008T/            ~30x/90x downsampled SBX -- still sbx-r; no
+                            downsampled sbx-r-f SAGE file exists yet, so
+                            it wasn't swapped when the live/original set
+                            was finalized to sbx-r-f (see
+                            scripts/generate_variant_archive.py). DRAGEN
+                            has no downsampled VCF, so there's no Dragen_ds/.
+  Ultima_ds/HG008T/         ~30x/90x downsampled Ultima
+  _legacy_sbx_versions/     superseded original-depth sbx-r files, outside
+                            the SEQ_Tech convention
   reference_data/
     genome/           GRCh38 no-ALT reference (GCA_000001405.15), + .fai/.gzi
     truth/            NIST HG008-T v0.3 truth VCF (tumor-only, confirmed truncal somatic)
@@ -129,11 +146,12 @@ results/
 
 Fetches `data/` from a GCS bucket via `gsutil -m rsync -r`. The bucket
 is expected to already mirror the exact layout `data/` should have
-locally — i.e. `<gs://bucket/prefix>/query_vcfs/...` and
+locally — i.e. `<gs://bucket/prefix>/SBX/...` and
 `<gs://bucket/prefix>/reference_data/...` map directly onto
-`data/query_vcfs/...` and `data/reference_data/...`. Everything under
-the given prefix is synced as-is; the script doesn't pick and choose
-individual files.
+`data/SBX/...` and `data/reference_data/...` (see "Folder layout"
+above for the full `<SEQ_Tech>/<sampleId>/...` convention). Everything
+under the given prefix is synced as-is; the script doesn't pick and
+choose individual files.
 
 Safe to re-run — `rsync` only transfers new/changed files, and the
 script deliberately does not pass `-d` (which would delete local
@@ -171,7 +189,7 @@ debugging), call `run_benchmark.sh` yourself:
 
 # example: Illumina SAGE/PURPLE at the "Ultima HCR" tier, full PON/PONGnomad rescue
 ./run_benchmark.sh il_ultimahcr illumina_purple \
-  ../data/query_vcfs/original/HG008T-il.purple.somatic.vcf.gz HG008T \
+  ../data/Ilmn/HG008T/HG008T.purple.somatic.vcf.gz HG008T \
   all_hcr "PONGnomad,PON;PONGnomad,PON"
 ```
 

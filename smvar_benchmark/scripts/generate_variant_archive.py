@@ -52,7 +52,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
 REFDATA_DIR = ROOT_DIR / "data" / "reference_data"
-VCF_DIR = ROOT_DIR / "data" / "query_vcfs"
+VCF_DIR = ROOT_DIR / "data"
 RESULTS_DIR = ROOT_DIR / "results"
 
 REF = REFDATA_DIR / "genome" / "GCA_000001405.15_GRCh38_no_alt_analysis_set.fasta.gz"
@@ -71,38 +71,45 @@ BEDS = {
 }
 
 # pipeline -> {stage_label: (vcf_path, tumor_sample)}
-# SBX uses the sbx-r (release) files, matching the manuscript-table
-# methodology (see README.md) -- not the earlier sbx files.
+# Paths follow the manuscript-wide convention (2026-08-27 restructure):
+# data/<SEQ_Tech>/<sampleId>/<sampleId>.<stage>.somatic.vcf.gz (and a
+# <SEQ_Tech>_ds variant for downsampled data). SBX (original/full-depth)
+# uses the finalized sbx-r-f release, matching the manuscript-table
+# methodology (see README.md -- "SBX pipeline finalized to sbx-r-f") --
+# not sbx-r or the earlier plain sbx files, which live under
+# data/_legacy_sbx_versions/, outside this convention. The downsampled
+# set below is intentionally still on sbx-r -- no downsampled sbx-r-f
+# SAGE file exists yet.
 PIPELINES_ORIGINAL = {
     "Dragen": {
-        "": (VCF_DIR / "original" / "dragen_4.2.4_HG008-mosaic_tumor.hard-filtered.vcf.gz", "HG008-T-mosaic"),
+        "": (VCF_DIR / "Dragen/HG008-T-mosaic/HG008-T-mosaic.hard-filtered.vcf.gz", "HG008-T-mosaic"),
     },
     "Ilmn": {
-        "SAGE": (VCF_DIR / "original" / "HG008T-il.sage.somatic.vcf.gz", "HG008T"),
-        "PURPLE": (VCF_DIR / "original" / "HG008T-il.purple.somatic.vcf.gz", "HG008T"),
+        "SAGE": (VCF_DIR / "Ilmn/HG008T/HG008T.sage.somatic.vcf.gz", "HG008T"),
+        "PURPLE": (VCF_DIR / "Ilmn/HG008T/HG008T.purple.somatic.vcf.gz", "HG008T"),
     },
     "SBX": {
-        "SAGE": (VCF_DIR / "original" / "HG008T-sbx-r.sage.somatic.vcf.gz", "HG008T"),
-        "PURPLE": (VCF_DIR / "original" / "HG008T-sbx-r.purple.somatic.vcf.gz", "HG008T"),
+        "SAGE": (VCF_DIR / "SBX/HG008T/HG008T.sage.somatic.vcf.gz", "HG008T"),
+        "PURPLE": (VCF_DIR / "SBX/HG008T/HG008T.purple.somatic.vcf.gz", "HG008T"),
     },
     "Ultima": {
-        "SAGE": (VCF_DIR / "original" / "HG008T-ult.sage.somatic.vcf.gz", "HG008T"),
-        "PURPLE": (VCF_DIR / "original" / "HG008T-ult.purple.somatic.vcf.gz", "HG008T"),
+        "SAGE": (VCF_DIR / "Ultima/HG008T/HG008T.sage.somatic.vcf.gz", "HG008T"),
+        "PURPLE": (VCF_DIR / "Ultima/HG008T/HG008T.purple.somatic.vcf.gz", "HG008T"),
     },
 }
 # No downsampled DRAGEN VCF exists -- omitted entirely, not just left blank.
 PIPELINES_DOWNSAMPLED = {
     "Ilmn": {
-        "SAGE": (VCF_DIR / "downsampled" / "HG008T-il.ds.sage.somatic.vcf.gz", "HG008T"),
-        "PURPLE": (VCF_DIR / "downsampled" / "HG008T-il.ds.purple.somatic.vcf.gz", "HG008T"),
+        "SAGE": (VCF_DIR / "Ilmn_ds/HG008T/HG008T.sage.somatic.vcf.gz", "HG008T"),
+        "PURPLE": (VCF_DIR / "Ilmn_ds/HG008T/HG008T.purple.somatic.vcf.gz", "HG008T"),
     },
     "SBX": {
-        "SAGE": (VCF_DIR / "downsampled" / "HG008T-sbx-r.ds.sage.somatic.vcf.gz", "HG008T"),
-        "PURPLE": (VCF_DIR / "downsampled" / "HG008T-sbx-r.ds.purple.somatic.vcf.gz", "HG008T"),
+        "SAGE": (VCF_DIR / "SBX_ds/HG008T/HG008T.sage.somatic.vcf.gz", "HG008T"),
+        "PURPLE": (VCF_DIR / "SBX_ds/HG008T/HG008T.purple.somatic.vcf.gz", "HG008T"),
     },
     "Ultima": {
-        "SAGE": (VCF_DIR / "downsampled" / "HG008T-ult.ds.sage.somatic.vcf.gz", "HG008T"),
-        "PURPLE": (VCF_DIR / "downsampled" / "HG008T-ult.ds.purple.somatic.vcf.gz", "HG008T"),
+        "SAGE": (VCF_DIR / "Ultima_ds/HG008T/HG008T.sage.somatic.vcf.gz", "HG008T"),
+        "PURPLE": (VCF_DIR / "Ultima_ds/HG008T/HG008T.purple.somatic.vcf.gz", "HG008T"),
     },
 }
 
@@ -117,7 +124,7 @@ RESCUE_FILTERS = {"PASS", "PON", "PON;PONGnomad", "PONGnomad"}
 WIDEST_RUN_ID_ORIGINAL = {
     "Dragen": "manuscript_dragen_widest",
     "Ilmn": "manuscript_ilmnpurple_widest",
-    "SBX": "manuscript_sbxr_widest",
+    "SBX": "manuscript_sbxrf_widest",
     "Ultima": "manuscript_ultimapurple_widest",
 }
 WIDEST_RUN_ID_DOWNSAMPLED = {
