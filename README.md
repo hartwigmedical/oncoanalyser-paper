@@ -16,19 +16,32 @@ Each manuscript figure is one self-contained notebook in the repository root:
 | `supplementary_figure_2.ipynb` | Supplementary Figure 2 |
 | `supplementary_figure_3.ipynb` | Supplementary Figure 3 |
 
-The notebooks stage their inputs from Google Cloud Storage into `data/` and write
-their output into `figures/`. Both directories are git-ignored and are created on
-first run, so a fresh clone contains no data — you need read access to the
-`gs://` buckets referenced in the notebooks.
+### Input data
+
+Every notebook opens with a configuration cell that points at one or more oncoanalyser
+run directories. Each of those may be **either a local path or a `gs://` URI** — the IO
+helpers branch on the `gs://` prefix and otherwise fall back to plain `pathlib` and
+`shutil`, so listing, reading and staging behave identically for both. The values
+committed here are the `gs://` locations the published figures were produced from;
+repoint them at a local run directory and no cloud access is needed.
+
+Inputs are staged into a local cache under `data/`, and figures are written to
+`figures/`. Both directories are git-ignored and created on first run, so a fresh clone
+contains no data.
+
+When configuring a local path, give an absolute one: `~` is not expanded, so a value
+like `~/HG008` fails with `FileNotFoundError`.
 
 ### Prerequisites
 
 * **Python >= 3.11** (the figures were generated with 3.14.7).
-* **[Google Cloud SDK](https://cloud.google.com/sdk/docs/install)** — every notebook
-  copies its inputs with `gsutil`, and `supplementary_figure_3` additionally calls
-  `gcloud auth print-access-token`. Authenticate once with `gcloud auth login`.
+* **[Google Cloud SDK](https://cloud.google.com/sdk/docs/install)** — only when reading
+  inputs from `gs://`. The notebooks shell out to `gsutil`, and `supplementary_figure_3`
+  additionally calls `gcloud auth print-access-token` to hand htslib a bearer token.
+  Authenticate once with `gcloud auth login`. Not needed for local inputs.
 * **`samtools` and `tabix` on `PATH`** — only for `supplementary_figure_3`, which reads
-  remote BAM/VCF files through their indexes. Skip these if you do not run that notebook.
+  BAM/VCF files through their indexes (remote or local). Skip these if you do not run
+  that notebook.
 * Optional: the figures use **Arial**; without it matplotlib falls back to Helvetica and
   then DejaVu Sans, which changes the typeface but nothing else.
 
