@@ -1,0 +1,25 @@
+# Conda alternative to the venv + requirements.txt route. Unlike a plain venv this
+# also installs samtools and tabix, which supplementary_figure_3 needs on PATH.
+#
+# Run from the repository root (the pip section resolves requirements.txt relatively):
+#
+#   conda env create -f environment.yml     # or: mamba env create -f environment.yml
+#   conda activate oncoanalyser-paper
+#
+name: oncoanalyser-paper
+
+channels:
+  - conda-forge
+  - bioconda
+
+dependencies:
+  - python=3.14          # version the figures were generated with; >=3.11 also works
+  - pip
+
+  # Command-line tools invoked from supplementary_figure_3
+  - samtools>=1.21
+  - htslib>=1.21         # provides tabix
+
+  # Python packages, kept in a single place in requirements.txt
+  - pip:
+      - -r requirements.txt

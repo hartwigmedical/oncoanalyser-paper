@@ -1,0 +1,20 @@
+# Python packages needed to run the figure notebooks in this repository.
+#
+#   python3 -m venv .venv
+#   source .venv/bin/activate
+#   pip install -r requirements.txt
+#
+# Versions are the ones the published figures were generated with
+# (Python 3.14.7, macOS arm64). Python >= 3.11 is expected to work.
+# See README.md for the non-Python prerequisites (gcloud/gsutil, samtools, tabix).
+
+# --- plotting / analysis ---
+matplotlib==3.11.0
+matplotlib-venn==1.1.2   # venn3 in figure_2; venn2 in figure_4 and supplementary_figure_2
+numpy==2.4.6
+pandas==3.0.3
+scipy==1.17.1            # gaussian_kde in supplementary_figure_1
+
+# --- notebook runtime ---
+ipykernel==7.3.0         # required by every Jupyter front-end, incl. the VS Code notebook editor
+jupyterlab>=4.2          # optional: only if you want a browser-based front-end
