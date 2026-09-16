@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 """Archive every truth-set variant, PLUS every candidate "FP" variant
-(FILTER exactly PASS/PON/PON;PONGnomad/PONGnomad at the final pipeline
-stage -- i.e. what the full-rescue methodology would count as PASS --
-in ANY of the included techs, but absent from the truth set), with
-region membership and each pipeline's raw call status, into a single
-convenient TSV.
+(FILTER exactly PASS/PON/PON;PONGnomad/PONGnomad AND tumour AF >= 0.10
+at the final pipeline stage.
 
 Depends on `results/runs/manuscript_<pipeline>_widest/` (or
 `manuscript_ds_<pipeline>_widest/` for --downsampled) already existing
@@ -119,6 +116,11 @@ PIPELINES_DOWNSAMPLED = {
 # as PASS." Whole-string match, not substring (e.g. NOT "PON;minMQF").
 RESCUE_FILTERS = {"PASS", "PON", "PON;PONGnomad", "PONGnomad"}
 
+# ...and tumour AF >= this, which is the other half of that methodology:
+# run_benchmark.sh scores a query record only if it survives both `bcftools
+# view -f PASS` (after the rescue rewrite) AND `FMT/AF>=0.10`.
+AF_MIN = 0.10
+
 # widest-tier run per pipeline -- source of the aardvark BD/EA columns
 # (see module docstring for why widest-tier tags generalize to every tier)
 WIDEST_RUN_ID_ORIGINAL = {
@@ -146,6 +148,24 @@ def ref_contigs():
 
 def run(cmd):
     return subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True).stdout
+
+
+def parse_af(af):
+    """Tumour AF as a float, or None when absent/unparseable.
+
+    Records are split and atomized before this, so AF is normally scalar; take
+    the max if a vector survives, matching `bcftools view -i 'FMT/AF>=...'`,
+    which passes a record if any element does.
+    """
+    if not af or af == ".":
+        return None
+    vals = []
+    for part in af.split(","):
+        try:
+            vals.append(float(part))
+        except ValueError:
+            continue
+    return max(vals) if vals else None
 
 
 def normalized_records(vcf_path, sample):
@@ -312,17 +332,35 @@ def main():
             lookups[(pipeline, stage)] = build_lookup(vcf_path, sample, want_repc)
 
     print("[3/6] Finding cross-tech FP candidates absent from truth...", file=sys.stderr)
+    # Candidate = FILTER in RESCUE_FILTERS *and* tumour AF >= AF_MIN, i.e. exactly
+    # what run_benchmark.sh would have scored for this pipeline. See AF_MIN above.
     fp_keys = set()
     for pipeline, stage in final_stage.items():
         d = lookups[(pipeline, stage)]
         n_before = len(fp_keys)
+        n_filter_ok = n_below_af = n_no_af = 0
         for key, rec in d.items():
-            if rec["filter"] in RESCUE_FILTERS:
-                fp_keys.add(key)
-        print(f"  {pipeline}: cumulative union now {len(fp_keys)} keys (+{len(fp_keys)-n_before})", file=sys.stderr)
+            if rec["filter"] not in RESCUE_FILTERS:
+                continue
+            n_filter_ok += 1
+            af = parse_af(rec["af"])
+            if af is None:
+                n_no_af += 1          # run_benchmark.sh's AF filter drops these too
+                continue
+            if af < AF_MIN:
+                n_below_af += 1
+                continue
+            fp_keys.add(key)
+        print(f"  {pipeline}: {n_filter_ok} records pass the FILTER test, of which "
+              f"{n_below_af} are below AF {AF_MIN} and {n_no_af} carry no usable AF; "
+              f"cumulative union now {len(fp_keys)} keys (+{len(fp_keys)-n_before})",
+              file=sys.stderr)
+        if n_no_af and n_no_af == n_filter_ok:
+            print(f"  WARNING: no {pipeline} record has a usable FORMAT/AF -- every candidate was "
+                  "dropped. Check that this pipeline's VCF carries an AF tag.", file=sys.stderr)
     fp_only_keys = fp_keys - truth_keys
-    print(f"  {len(fp_keys)} total PASS/PON/PONGnomad candidates across all included techs, "
-          f"{len(fp_only_keys)} not in truth set", file=sys.stderr)
+    print(f"  {len(fp_keys)} total PASS/PON/PONGnomad candidates at AF >= {AF_MIN} across all "
+          f"included techs, {len(fp_only_keys)} not in truth set", file=sys.stderr)
 
     print("[4/6] Building a minimal VCF for the FP-only keys (for region lookups)...", file=sys.stderr)
     fp_vcf = "/tmp/fp_only_for_archive.vcf.gz"

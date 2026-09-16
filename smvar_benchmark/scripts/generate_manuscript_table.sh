@@ -27,10 +27,13 @@
 #     -- downsampled, 15 rows (3 pipelines x 5 tiers).
 #
 # Safe to re-run: uses fixed run_ids (manuscript_<pipeline>_<tier> /
-# manuscript_ds_<pipeline>_<tier>); if a run_id already exists under
-# results/runs/, that run is skipped and its cached ledger rows are reused
-# (per run_benchmark.sh's own safety check). Delete results/runs/<run_id>/
-# and its results.tsv rows to force a specific run to redo.
+# manuscript_ds_<pipeline>_<tier>); if results/runs/<run_id>/.complete exists,
+# that run is skipped and its cached ledger rows are reused. The marker -- not
+# the directory -- is the test: a run directory left behind by a failed or
+# interrupted attempt has no marker, and run_benchmark.sh discards it and redoes
+# the run, so an interrupted sweep resumes by simply re-invoking this script.
+# Delete results/runs/<run_id>/ and its results.tsv rows to force a completed
+# run to re start.
 
 set -euo pipefail
 
@@ -106,8 +109,12 @@ run_all () {
       IFS=: read -r tkey bed_tier <<< "$tier"
       run_id="${run_prefix}_${pkey}_${tkey}"
       RUN_IDS+=("$run_id")
-      if [ -d "$RESULTS_DIR/runs/$run_id" ]; then
-        echo "  $run_id already exists, skipping run (reusing cached result)"
+      # Only a run marked .complete by run_benchmark.sh counts as cached. A bare
+      # directory can be an aardvark/ledger failure that wrote no ledger rows, and
+      # treating that as a success silently dropped a pipeline x tier from the
+      # tables. run_benchmark.sh discards such a directory and redoes the run.
+      if [ -f "$RESULTS_DIR/runs/$run_id/.complete" ]; then
+        echo "  $run_id already completed, skipping run (reusing cached result)"
         continue
       fi
       echo "  running $run_id ($tech, tier=$bed_tier)"
