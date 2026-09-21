@@ -4,7 +4,12 @@
 # Usage:
 #   run_benchmark.sh <run_id> <tech_label> <query_vcf> <query_sample> [bed_tier] [rescue_filter]
 #
-#   run_id        unique label for this run, e.g. sbx_purple_20260724
+#   run_id        unique label for this run, e.g. sbx_purple_20260724. Must not be
+#                 empty or contain '/'. A finished run is marked by
+#                 results/runs/<run_id>/.complete (written as the very last step);
+#                 a run directory WITHOUT that marker is an interrupted/failed run
+#                 and is discarded and redone rather than reused -- see
+#                 "Completion marker" below.
 #   tech_label    free-text tech/pipeline tag, e.g. sbx, illumina, ultima
 #   query_vcf     path to the pipeline's somatic VCF (bgzipped)
 #   query_sample  sample name of the TUMOR sample column in query_vcf
@@ -60,6 +65,12 @@ QUERY_SAMPLE="$4"
 BED_TIER="${5:-nogermlineinterference}"
 RESCUE_FILTER="${6:-}"
 
+# run_id becomes a directory name under results/runs/ that this script may delete
+# (see "Completion marker" below), so reject anything that could escape it.
+case "$RUN_ID" in
+  ""|.|..|*/*) echo "Invalid run_id '$RUN_ID': must be non-empty and contain no '/'." >&2; exit 1 ;;
+esac
+
 export PATH="/opt/homebrew/bin:$PATH"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -99,11 +110,36 @@ for f in "$TRUTH_VCF" "$BED" "$REF" "$QUERY_VCF"; do
   [ -f "$f" ] || { echo "Missing required file: $f" >&2; exit 1; }
 done
 
+# Completion marker.
+#
+# A run is "done" only once $RUN_DIR/.complete exists.
+# A directory with the marker is a real result and is never touched. One without
+# it is an interrupted/failed attempt, so it is discarded and the run redone.
 if [ -d "$RUN_DIR" ]; then
-  echo "run_id '$RUN_ID' already exists at $RUN_DIR -- pick a unique run_id (or delete it first)." >&2
-  exit 1
+  if [ -f "$RUN_DIR/.complete" ]; then
+    echo "run_id '$RUN_ID' already completed at $RUN_DIR -- pick a unique run_id (or delete it first)." >&2
+    exit 1
+  fi
+  echo "run_id '$RUN_ID' exists at $RUN_DIR but has no .complete marker (interrupted or failed run):" >&2
+  echo "  discarding it and re-running. If that attempt already appended rows for this run_id to" >&2
+  echo "  $RESULTS_TSV, append_ledger_rows.py will refuse to append again -- delete those rows first." >&2
+  rm -rf "$RUN_DIR"
 fi
 mkdir -p "$RUN_DIR"
+
+# Clean-up
+cleanup_incomplete_run () {
+  if [ -f "$RUN_DIR/.complete" ]; then
+    return 0
+  fi
+  if [ -s "$RUN_DIR/aardvark.log" ]; then
+    mkdir -p "$RESULTS_DIR/logs"
+    cp "$RUN_DIR/aardvark.log" "$RESULTS_DIR/logs/$RUN_ID.aardvark.failed.log"
+    echo "Kept aardvark's log at $RESULTS_DIR/logs/$RUN_ID.aardvark.failed.log" >&2
+  fi
+  rm -rf "$RUN_DIR"
+}
+trap cleanup_incomplete_run EXIT
 
 if [ -n "$RESCUE_FILTER" ]; then
   echo "[1/3] Filtering query to PASS (rescuing FILTER in {$RESCUE_FILTER} exactly) + tumor AF>=10%, splitting multiallelics + atomizing MNVs, sorting..."
@@ -113,8 +149,7 @@ fi
 if ! bcftools query -l "$QUERY_VCF" | grep -qx "$QUERY_SAMPLE"; then
   echo "Sample '$QUERY_SAMPLE' not found in $QUERY_VCF. Available samples:" >&2
   bcftools query -l "$QUERY_VCF" >&2
-  rmdir "$RUN_DIR"
-  exit 1
+  exit 1   # the EXIT trap removes the unfinished run directory
 fi
 REF_CONTIGS="$(cut -f1 "${REF}.fai" | paste -sd, -)"
 bcftools view -s "$QUERY_SAMPLE" "$QUERY_VCF" \
@@ -148,11 +183,14 @@ docker run --rm --platform linux/amd64 \
     --output-dir /out/aardvark \
     --compare-label "$RUN_ID" \
     --threads 4 \
-  > "$RUN_DIR/aardvark.log" 2>&1 || { echo "aardvark failed, see $RUN_DIR/aardvark.log" >&2; exit 1; }
+  > "$RUN_DIR/aardvark.log" 2>&1 || { echo "aardvark failed -- its log is preserved, see the path printed below." >&2; exit 1; }
 
 echo "[3/3] Appending raw + EA-aware dosage-corrected rows to results ledger..."
 python3 "$SCRIPT_DIR/append_ledger_rows.py" \
   "$RUN_DIR" "$RESULTS_TSV" "$RUN_ID" "$TECH_LABEL" "$QUERY_VCF" "$QUERY_SAMPLE" "$BED_TIER"
+
+# Last step, and only reached if everything above succeeded: mark the run finished.
+date -u +%Y-%m-%dT%H:%M:%SZ > "$RUN_DIR/.complete"
 
 echo "Done. Per-run detail: $RUN_DIR/aardvark/ (summary.tsv, truth.vcf.gz, query.vcf.gz w/ BD/EA/OA tags)"
 echo "Ledger rows appended to: $RESULTS_TSV (dosage_scoring=raw is aardvark's native GT/BASEPAIR scoring;"

@@ -12,7 +12,10 @@ This package is self-contained and holds no intermediate results: run
 the two scripts below and they build everything (region-tier BEDs,
 per-run comparisons, manuscript tables, variant archives) from the
 inputs already on disk. Everything is safe to re-run — both scripts
-skip work that's already done and never overwrite existing output.
+skip work that's already done and never overwrite existing output. A run
+counts as "already done" only once it is marked complete, so an
+interrupted or failed run is redone rather than reused (see "Resuming"
+below).
 
 ## Folder layout
 
@@ -173,13 +176,46 @@ populated, only on its final layout matching "Folder layout" above.
    on first run and cached there afterward.
 2. **Runs `run_benchmark.sh` for every pipeline x tier combination** —
    20 original (4 pipelines x 5 tiers) + 15 downsampled (3 pipelines x
-   5 tiers, no DRAGEN). Each run is skipped if its `run_id` already
-   has a directory under `results/runs/` (so a partial/interrupted run
-   resumes cleanly — just re-invoke the script).
+   5 tiers, no DRAGEN). Each run is skipped if it is already marked
+   complete — see "Resuming" below.
 3. **Builds the manuscript TSVs from `results/results.tsv`**, one row
    per pipeline x tier, for `ALL` variants and each of `Snv` /
    `Insertion` / `Deletion` separately (8 files total: 4 original + 4
    downsampled).
+
+### Table columns
+
+`pipeline`, `bed_tier`, `truth_TP`, `query_TP`, `FP`, `FN`, `recall`,
+`precision`, `f1` (the three metrics as percentages, or `NA` where the
+ledger has no number for that pipeline x tier x variant type).
+
+There are two TP columns because recall and precision are counted on
+opposite sides of the comparison:
+
+```
+recall    = truth_TP / (truth_TP + FN)     # truth alleles aardvark matched
+precision = query_TP / (query_TP + FP)     # query records aardvark matched
+```
+
+### Resuming
+
+`run_benchmark.sh` writes `results/runs/<run_id>/.complete` as its very
+last step, after the ledger rows are appended. 
+
+* **marker present** → a finished run; `generate_manuscript_table.sh`
+  skips it and reuses its ledger rows, and `run_benchmark.sh` refuses to
+  overwrite it.
+* **marker absent** → an interrupted or failed attempt (aardvark or the
+  ledger step can fail after the directory is created).
+  `run_benchmark.sh` discards the directory and redoes the run, so an
+  interrupted sweep resumes by just re-invoking
+  `generate_manuscript_table.sh`. A failed aardvark compare leaves its
+  log behind at `results/logs/<run_id>.aardvark.failed.log`.
+
+To force a *completed* run to redo, delete both
+`results/runs/<run_id>/` and that run's rows in `results/results.tsv`;
+`append_ledger_rows.py` refuses to append a second set of rows for a
+`run_id` the ledger already has.
 
 To run a single pipeline x tier combination directly (e.g. while
 debugging), call `run_benchmark.sh` yourself:
@@ -215,9 +251,8 @@ debugging), call `run_benchmark.sh` yourself:
 
 `generate_variant_archive.py` builds one row per truth-set allele,
 plus one row per additional cross-technology "FP" candidate (FILTER
-exactly `PASS`/`PON`/`PON;PONGnomad`/`PONGnomad` at that pipeline's
-final stage, in any included technology, but absent from the truth
-set). It reads the raw per-pipeline VCFs directly for the FILTER/AF/
+exactly `PASS`/`PON`/`PON;PONGnomad`/`PONGnomad` **and** tumour
+`AF >= 0.10` at that pipeline's final stage.
 REP_C diagnostic columns — no dependency on `results/results.tsv` for
 those. It does, however, require `generate_manuscript_table.sh` to
 have already run: the `<Pipeline>_BD`/`<Pipeline>_EA` columns (see

@@ -30,6 +30,13 @@ from pathlib import Path
 FIXED_COLS = ["run_id", "tech", "date", "bed_tier", "query_vcf", "query_sample"]
 TRAILING_COLS = ["tier", "fn_root_cause", "dosage_scoring"]
 
+# The variant_type labels this script expects aardvark's summary.tsv to use. The
+# truth-side numbers (truth_total/truth_tp/truth_fn/metric_recall) of every
+# ea_corrected row are looked up by these exact strings, so if aardvark ever
+# renames them the lookups would all miss and the rows would come out blank
+# rather than wrong-looking -- hence the explicit check in validate_variant_types.
+VARIANT_TYPES = ["ALL", "Snv", "Insertion", "Deletion"]
+
 
 def classify(ref, alt):
     if len(ref) == 1 and len(alt) == 1:
@@ -39,6 +46,45 @@ def classify(ref, alt):
     if len(ref) > len(alt) and ref.startswith(alt):
         return "Deletion"
     return None
+
+
+def validate_variant_types(summary_rows, summary_tsv):
+    """Check aardvark's GT variant_type labels against VARIANT_TYPES.
+
+    A missing per-type row is legitimate (a narrow region tier can genuinely
+    contain no insertions), so that is only reported. A missing "ALL" row, or a
+    label set that shares nothing with what we expect, means the labels have
+    moved and every truth-side lookup below would silently blank out -- fail.
+    """
+    gt_types = {r["variant_type"] for r in summary_rows if r["comparison"] == "GT"}
+    if not gt_types:
+        sys.exit(f"{summary_tsv} has no comparison=GT rows -- cannot build ea_corrected rows.")
+    if "ALL" not in gt_types:
+        sys.exit(
+            f"{summary_tsv} has no comparison=GT row with variant_type='ALL' -- the main "
+            f"manuscript table needs it.\n  found: {sorted(gt_types)}"
+        )
+    missing = [vt for vt in VARIANT_TYPES if vt not in gt_types]
+    unknown = sorted(gt_types - set(VARIANT_TYPES))
+    # A label we expect is absent *while* aardvark reports labels we don't know:
+    # that is a rename, not an empty variant class, and every truth-side lookup
+    # for those types would blank out. Fail, because these notes go to stderr,
+    # which generate_manuscript_table.sh sends to a per-run log the user is not
+    # watching -- a warning here would be effectively silent.
+    if missing and unknown:
+        sys.exit(
+            f"{summary_tsv} variant_type labels have changed -- refusing to write rows whose "
+            "truth-side columns would all be blank.\n"
+            f"  expected but absent: {missing}\n  present but unknown: {unknown}\n"
+            "  Update VARIANT_TYPES in append_ledger_rows.py to match aardvark."
+        )
+    if missing:
+        # No unknown labels, so this region tier genuinely contains none of these.
+        print(f"NOTE: {summary_tsv} has no GT row for {missing}; those ledger rows get blank "
+              "truth-side columns and metrics.", file=sys.stderr)
+    if unknown:
+        print(f"NOTE: aardvark also reported variant_type {unknown}, which this ledger does not "
+              "table.", file=sys.stderr)
 
 
 def run_date(query_vcf):
@@ -55,18 +101,33 @@ def main():
 
     with open(summary_tsv, newline="") as fh:
         summary_rows = list(csv.DictReader(fh, delimiter="\t"))
-    summary_fields = [c for c in summary_rows[0].keys() if c != "compare_label"] if summary_rows else []
+    if not summary_rows:
+        sys.exit(f"{summary_tsv} has no rows -- aardvark produced no summary for this run.")
+    summary_fields = [c for c in summary_rows[0].keys() if c != "compare_label"]
+    validate_variant_types(summary_rows, summary_tsv)
 
     fieldnames = FIXED_COLS + summary_fields + TRAILING_COLS
 
     if results_tsv.exists():
+        run_id_col = fieldnames.index("run_id")
         with open(results_tsv, newline="") as fh:
             existing_header = fh.readline().rstrip("\n").split("\t")
-        if existing_header != fieldnames:
+            if existing_header != fieldnames:
+                sys.exit(
+                    "results.tsv header does not match this run's expected columns -- "
+                    "ledger schema drift detected, refusing to append.\n"
+                    f"  existing: {existing_header}\n  expected: {fieldnames}"
+                )
+            # The ledger is append-only, so a re-run of a run_id that already has rows
+            # would double it up. build_manuscript_tables.py keys on run_id and would
+            # silently keep whichever copy came last, so refuse instead.
+            already = sum(1 for line in fh
+                          if line.split("\t")[run_id_col:run_id_col + 1] == [run_id])
+        if already:
             sys.exit(
-                "results.tsv header does not match this run's expected columns -- "
-                "ledger schema drift detected, refusing to append.\n"
-                f"  existing: {existing_header}\n  expected: {fieldnames}"
+                f"{results_tsv} already holds {already} row(s) for run_id '{run_id}' -- "
+                "refusing to append duplicates.\n"
+                f"  Remove those rows (and results/runs/{run_id}/) to redo this run."
             )
         write_header = False
     else:
@@ -103,7 +164,7 @@ def main():
                 "metric_recall": row["metric_recall"],
             }
 
-        counts = {vt: {"tp": 0, "novel_fp": 0, "dosage_fp": 0} for vt in ["ALL", "Snv", "Insertion", "Deletion"]}
+        counts = {vt: {"tp": 0, "novel_fp": 0, "dosage_fp": 0} for vt in VARIANT_TYPES}
         proc = subprocess.run(["bcftools", "view", "-H", str(query_vcf_scored)], capture_output=True, text=True, check=True)
         for line in proc.stdout.splitlines():
             f = line.rstrip("\n").split("\t")
@@ -121,7 +182,7 @@ def main():
                 else:
                     counts[t]["dosage_fp"] += 1
 
-        for vt in ["ALL", "Snv", "Insertion", "Deletion"]:
+        for vt in VARIANT_TYPES:
             c = counts[vt]
             tp = c["tp"] + c["dosage_fp"]
             novel_fp = c["novel_fp"]
