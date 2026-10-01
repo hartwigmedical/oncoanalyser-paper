@@ -20,6 +20,7 @@ and 3 are not generated here.
 | `extended_figure_2.ipynb` | Extended Figure 2 — per-region SNV & indel spectra and VAF across the three platforms |
 | `extended_figure_4.ipynb` | Extended Figure 4 — fresh-frozen vs FFPE, sequencing QC and GIAB high-confidence benchmark |
 | `extended_figure_5.ipynb` | Extended Figure 5 — why FFPE misses variants called in fresh-frozen |
+| `extended_figure_6.ipynb` | Extended Figure 6 — tumour/normal vs tumour-only, benchmarked on Illumina and compared across the three platforms |
 
 Every notebook opens with a **Data access** section that lists exactly which files it reads,
 how large they are, and the three ways to supply them. Read that first.
