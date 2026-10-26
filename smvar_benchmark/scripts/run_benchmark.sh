@@ -22,7 +22,10 @@
 #                 The last 4 are derived tiers (bedtools intersect of a primary
 #                 tier with an independent HCR track) and are built
 #                 automatically on first use if missing -- see
-#                 "ensure_bed_tier" below and README.md.
+#                 "ensure_bed_tier" below and README.md. Any of the 5
+#                 manuscript tiers + "_repcle8" (REP_C <= 8 supplementary
+#                 table) also works once generate_manuscript_table.sh has
+#                 built it.
 #   rescue_filter optional, comma-separated list, default none. Any query
 #                 record whose FILTER column is EXACTLY one of the listed
 #                 values (whole-string match, e.g. "PONGnomad" or
@@ -44,10 +47,13 @@
 # record it touches and some pipelines call against ALT-contig-aware
 # references.
 #
-# Query calls are also atomized (bcftools norm --atomize): MNV/block
+# Query MNVs are also atomized (bcftools norm --atomize): MNV/block
 # substitutions become consecutive single-base SNVs, matching how the truth
 # VCF always represents adjacent phased substitutions (as separate SNVs,
-# never as MNV blocks). See README.md ("MNV atomization").
+# never as MNV blocks). Complex indel+substitution records (REF/ALT lengths
+# differ, not a standard anchored indel) are NOT atomized -- that splits them
+# into overlapping pieces -- and are left for aardvark's haplotype matching. See
+# README.md ("MNV atomization").
 #
 # See README.md in the repo root for the full methodology.
 
@@ -164,8 +170,23 @@ bcftools view -s "$QUERY_SAMPLE" "$QUERY_VCF" \
   | bcftools view -f PASS \
   | bcftools view -i 'FMT/AF>=0.10' \
   | bcftools view -t "$REF_CONTIGS" \
-  | bcftools norm -m -any --atomize -f "$REF" 2>/dev/null \
-  | bcftools sort -Oz -o "$RUN_DIR/query.pass.vcf.gz" 2>/dev/null
+  | bcftools norm -m -any -f "$REF" 2>/dev/null \
+  | awk -F'\t' -v cx="$RUN_DIR/query.complex.vcf" '
+      /^#/ { print; next }
+      # complex = REF/ALT lengths differ and it is not a standard indel (shorter
+      # allele = the single shared anchor base), e.g. ATGT>TG, CC>A, A>TT
+      length($4) != length($5) && !((length($4) == 1 || length($5) == 1) && substr($4, 1, 1) == substr($5, 1, 1)) {
+        print > cx; next
+      }
+      { print }
+    ' > "$RUN_DIR/query.simple.vcf"
+# Only MNVs (same-length REF/ALT) are atomized. A complex indel+substitution
+# record (e.g. ATGT>TG) atomizes into overlapping pieces that can't be applied
+# together, so it is passed through intact for aardvark to match by haplotype.
+{ bcftools norm -m -any --atomize -f "$REF" "$RUN_DIR/query.simple.vcf" 2>/dev/null
+  if [ -f "$RUN_DIR/query.complex.vcf" ]; then cat "$RUN_DIR/query.complex.vcf"; fi
+} | bcftools sort -Oz -o "$RUN_DIR/query.pass.vcf.gz" 2>/dev/null
+rm -f "$RUN_DIR/query.simple.vcf" "$RUN_DIR/query.complex.vcf"
 tabix -f -p vcf "$RUN_DIR/query.pass.vcf.gz"
 
 echo "[2/3] Running aardvark compare (linux/amd64 via Docker)..."

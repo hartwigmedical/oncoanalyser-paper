@@ -23,14 +23,18 @@ TIER_LABELS = {
     "nogermlinewithin50bp_giabhcr": "GIAB HCR + nogermlinewithin50bp",
     "nogermlinewithin50bp_hcr": "Ultima HCR + nogermlinewithin50bp",
 }
+# REP_C <= 8 supplementary tiers: same 5 tiers minus long tandem repeats
+TIER_LABELS.update({f"{k}_repcle8": f"{v} (REP_C<=8)" for k, v in list(TIER_LABELS.items())})
 PIPELINE_LABELS = {
     "illumina_dragen": "ILMN DRAGEN",
     "illumina_purple": "ILMN SAGE/PURPLE",
     "sbx_purple": "SBX SAGE/PURPLE",
     "ultima_purple": "Ultima SAGE/PURPLE",
+    "illumina_dragen_ds": "ILMN DRAGEN",
     "illumina_purple_ds": "ILMN SAGE/PURPLE",
     "sbx_purple_ds": "SBX SAGE/PURPLE",
     "ultima_purple_ds": "Ultima SAGE/PURPLE",
+    "illumina_purple_pcr": "ILMN SAGE/PURPLE (PCR)",
 }
 # variant_type in results.tsv -> (suffix for output filename, or "" for the main table)
 VARIANT_TYPES = [("ALL", ""), ("Snv", "_SNV"), ("Insertion", "_Insertion"), ("Deletion", "_Deletion")]
@@ -127,13 +131,25 @@ def main():
                               "the downsampled table is written alongside it with a _downsampled suffix")
     parser.add_argument("--original-run-ids", nargs="+", required=True)
     parser.add_argument("--downsampled-run-ids", nargs="+", required=True)
+    parser.add_argument("--extra-table", nargs="+", action="append", default=[],
+                        metavar=("OUT_TSV", "RUN_ID"),
+                        help="an additional (supplementary) table: its output path, then its run_ids "
+                             "in row order; repeatable. Written the same way, incl. the "
+                             "_SNV/_Insertion/_Deletion variants.")
     args = parser.parse_args()
 
+    for extra in args.extra_table:
+        if len(extra) < 2:
+            parser.error(f"--extra-table needs an output path and at least one run_id, got {extra}")
     wanted = set(args.original_run_ids) | set(args.downsampled_run_ids)
+    for extra in args.extra_table:
+        wanted |= set(extra[1:])
     rows, idx = load_rows(args.results_tsv, wanted)
 
     write_table(rows, idx, args.out_tsv, args.original_run_ids, "original")
     write_table(rows, idx, args.out_tsv.replace(".tsv", "_downsampled.tsv"), args.downsampled_run_ids, "downsampled")
+    for out_tsv, *run_ids in args.extra_table:
+        write_table(rows, idx, out_tsv, run_ids, out_tsv.rsplit("/", 1)[-1])
 
 
 if __name__ == "__main__":
