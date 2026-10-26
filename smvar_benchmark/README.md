@@ -1,12 +1,16 @@
-# HG008-T smvar benchmark — self-contained handover package
+# HG008-T somatic variant benchmark
 
 Compares somatic small-variant (SNV/indel) VCFs from four
 technology/pipeline combinations (DRAGEN, Illumina SAGE/PURPLE, SBX
 SAGE/PURPLE, Ultima SAGE/PURPLE) against the NIST HG008-T draft somatic
 SNV/INDEL benchmark (v0.3), using `aardvark`. Includes both the
 original (full-depth) query VCFs and a downsampled set (~30x normal /
-~90x tumor coverage) for Illumina, SBX, and Ultima — DRAGEN has no
-downsampled VCF and is omitted from the downsampled outputs.
+~90x tumor coverage) for all four (DRAGEN's from a newer DRAGEN version
+— see "Notes on the downsampled VCFs"). Two
+supplementary tables come out of the same run: Illumina PCR-amplified
+vs. PCR-free library prep, and all four pipelines restricted to variants
+outside long tandem repeats (`REP_C <= 8`) — see "Supplementary tables"
+below.
 
 This package is self-contained and holds no intermediate results: run
 the two scripts below and they build everything (region-tier BEDs,
@@ -37,9 +41,18 @@ data/
                             downsampled sbx-r-f SAGE file exists yet, so
                             it wasn't swapped when the live/original set
                             was finalized to sbx-r-f (see
-                            scripts/generate_variant_archive.py). DRAGEN
-                            has no downsampled VCF, so there's no Dragen_ds/.
+                            scripts/generate_variant_archive.py).
   Ultima_ds/HG008T/         ~30x/90x downsampled Ultima
+  Dragen_ds/HG008T/         HG008T.hard-filtered.vcf.gz(.tbi) -- ~30x/90x
+                            downsampled DRAGEN (4.5.4, re-aligned from the
+                            downsampled FASTQs). Fetched by
+                            download_resources.sh; samples HG008R/HG008T
+  Ilmn_pcr/HG008T/          HG008T.{sage,purple}.somatic.vcf.gz(.tbi) -- same
+                            HG008 pair, PCR-amplified library, NovaSeq X;
+                            supplementary table only. Placed by hand: not
+                            yet in a public bucket, so download_resources.sh
+                            doesn't fetch it (the table is skipped, with a
+                            warning, if it's absent)
   _legacy_sbx_versions/     superseded original-depth sbx-r files, outside
                             the SEQ_Tech convention
   reference_data/
@@ -52,14 +65,15 @@ scripts/
   append_ledger_rows.py          called by run_benchmark.sh; appends ledger rows
   generate_manuscript_table.sh   runs everything needed for the manuscript tables
   build_manuscript_tables.py     called by generate_manuscript_table.sh
+  build_repc_mask.py             called by generate_manuscript_table.sh; REP_C>8 repeat mask
   generate_variant_archive.py    builds the per-variant archive TSV
   tools/aardvark                 aardvark binary (Linux x86_64, run via Docker)
 results/           NOT included -- created by the scripts (runs/, results.tsv,
-                    manuscript TSVs, variant archive TSVs)
+                    manuscript + supplementary TSVs, variant archive TSVs)
 ```
 
 `data/` is intentionally the only top-level folder named that way — this
-package is meant to live in a git repo whose `.gitignore` already
+package assumes that it is inside a git repo whose `.gitignore` already
 excludes any directory named `data` (or `figures`) anywhere in the
 tree, so the large VCFs/reference genome under `data/` are never
 accidentally committed; they're archived separately from git, in a
@@ -108,13 +122,16 @@ for where to get it).
 ```bash
 cd scripts
 
-# 0. Fetch data/ (query VCFs, reference genome, truth VCF, region BEDs)
-#    from wherever it's archived. Safe to re-run -- only adds/updates,
-#    never deletes.
-./download_resources.sh gs://<bucket>/<prefix>
+# 0. Fetch SBX/Ilmn/Ultima's pipeline VCFs and the DRAGEN downsampled VCF
+#    from gs://hartwig-oapaper-celllines (see "Step-by-step: downloading
+#    resources" below), optionally also mirroring reference_data/ (and
+#    anything else) from a bucket laid out like data/. Safe to re-run.
+./download_resources.sh [gs://<bucket>/<prefix>]
 
-# 1. Manuscript tables (original + downsampled), ~35 aardvark runs total.
-#    Takes a while (each run invokes Docker); safe to re-run/resume.
+# 1. Manuscript tables (original + downsampled) and the two supplementary
+#    tables, 65 aardvark runs total, plus a one-off ~18 min pass over the
+#    reference for the REP_C mask. Takes a while (each run invokes
+#    Docker); safe to re-run/resume.
 #    Must run before step 2 -- the archive imports its BD/EA columns
 #    from these runs' aardvark output (specifically the *_widest runs).
 ./generate_manuscript_table.sh
@@ -137,6 +154,8 @@ results/
                                     (run, comparison-mode, variant-type)
   Preliminary_results_wigits_manuscript.tsv              (+_SNV/_Insertion/_Deletion)
   Preliminary_results_wigits_manuscript_downsampled.tsv  (+_SNV/_Insertion/_Deletion)
+  Supplementary_PCR_vs_PCRfree.tsv                       (+_SNV/_Insertion/_Deletion)
+  Supplementary_REPC_le8.tsv                             (+_SNV/_Insertion/_Deletion)
   Variant_archive_truthset.tsv
   Variant_archive_truthset_downsampled.tsv
 ```
@@ -144,44 +163,72 @@ results/
 ## Step-by-step: downloading resources
 
 ```bash
-./download_resources.sh <gs://bucket/prefix>
+./download_resources.sh                    # pipeline VCFs only
+./download_resources.sh <gs://bucket/prefix>   # + reference_data/ mirror
 ```
 
-Fetches `data/` from a GCS bucket via `gsutil -m rsync -r`. The bucket
-is expected to already mirror the exact layout `data/` should have
-locally — i.e. `<gs://bucket/prefix>/SBX/...` and
-`<gs://bucket/prefix>/reference_data/...` map directly onto
-`data/SBX/...` and `data/reference_data/...` (see "Folder layout"
-above for the full `<SEQ_Tech>/<sampleId>/...` convention). Everything
-under the given prefix is synced as-is; the script doesn't pick and
-choose individual files.
+Two independent parts:
 
-Safe to re-run — `rsync` only transfers new/changed files, and the
-script deliberately does not pass `-d` (which would delete local
-files absent from the bucket), so it will never remove anything you
-already have. If you're populating `data/` some other way (a shared
-network mount, manual `gsutil cp`, etc.), this script is just a
-convenience — nothing else in this repo depends on how `data/` gets
-populated, only on its final layout matching "Folder layout" above.
+1. **Pipeline VCFs (always runs, no argument needed).** Fetched with
+   `gsutil cp` from the cell-line results bucket
+   `gs://hartwig-oapaper-celllines/HG008/wgs/` (read access needed):
+   - SBX/Ilmn/Ultima SAGE and PURPLE: the tumor/normal oncoanalyser
+     run, `<tech>/bwa/tn/oa3/{sage/somatic,purple}/`, into
+     `data/<SEQ_Tech>/HG008T/HG008T.<stage>.somatic.vcf.gz`. The bucket's
+     tech folders are listed in the script (`PIPELINE_SOURCES`).
+   - DRAGEN downsampled:
+     `illumina_novaseq6000/dragen454/tn/linear/HG008R_HG008T.hard-filtered.vcf.gz`,
+     into `data/Dragen_ds/HG008T/HG008T.hard-filtered.vcf.gz`. The bucket
+     path doesn't say so, but this is the downsampled run (see "Notes on
+     the downsampled VCFs").
+
+   If a remote `.tbi` companion doesn't exist, the script indexes
+   locally with `bcftools index -t` instead. **SBX caveat:** the bucket
+   currently holds a SAGE 5.0-beta.12 / PURPLE 4.4-beta.12 SBX run, not
+   the final sbx-r-f release (SAGE 5.0 / PURPLE 4.4) used for the
+   manuscript tables; it is being replaced, so check `##sageVersion=5.0`
+   in the fetched SBX VCF header. **The full-depth DRAGEN VCF, the
+   downsampled SAGE/PURPLE sets, the Illumina PCR set (`Ilmn_pcr/`) and
+   `reference_data/` are not in that bucket** — populate them however you
+   already do; `Ilmn_pcr/` is placed by hand.
+2. **`reference_data/`-and-anything-else mirror (only if you pass a
+   bucket prefix).** The original behavior, unchanged: `gsutil -m
+   rsync -r <bucket> data/`. The bucket is expected to already mirror
+   the exact layout `data/` should have locally — i.e.
+   `<gs://bucket/prefix>/reference_data/...` maps directly onto
+   `data/reference_data/...`. Everything under the given prefix is
+   synced as-is; this part doesn't pick and choose individual files.
+
+Both parts are safe to re-run — `gsutil cp` overwrites in place, and
+the rsync in part 2 only transfers new/changed files and deliberately
+does not pass `-d`, so neither part ever deletes anything already in
+`data/`. If you're populating `data/` some other way (a shared network
+mount, manual `gsutil cp`, etc.), this script is just a convenience —
+nothing else in this repo depends on how `data/` gets populated, only
+on its final layout matching "Folder layout" above.
 
 ## Step-by-step: manuscript tables
 
 `generate_manuscript_table.sh` does 3 things:
 
 1. **Builds any missing derived confidence-region BED tiers.** Only
-   the primary/independent region tracks are shipped in
+   the primary/independent region tracks are stored in
    `data/reference_data/regions/` (see "Region tiers" below); the 4 derived
    intersections (`all_hcr`, `all_giabhcr`, `nogermlinewithin50bp_hcr`,
    `nogermlinewithin50bp_giabhcr`) are built via `bedtools intersect`
-   on first run and cached there afterward.
+   on first run and cached there afterward. Likewise the REP_C repeat
+   mask (`repc_gt8_mask.bed`, via `build_repc_mask.py`, ~18 min once) and
+   the 5 `*_repcle8` tiers made from it.
 2. **Runs `run_benchmark.sh` for every pipeline x tier combination** —
-   20 original (4 pipelines x 5 tiers) + 15 downsampled (3 pipelines x
-   5 tiers, no DRAGEN). Each run is skipped if it is already marked
+   20 original (4 pipelines x 5 tiers) + 20 downsampled (4 pipelines x
+   5 tiers) + 5 Illumina PCR (`supp_pcr_*`, only if its VCF
+   is present) + 20 REP_C <= 8 (4 original pipelines x 5 `_repcle8`
+   tiers, `supp_repcle8_*`). Each run is skipped if it is already marked
    complete — see "Resuming" below.
 3. **Builds the manuscript TSVs from `results/results.tsv`**, one row
    per pipeline x tier, for `ALL` variants and each of `Snv` /
-   `Insertion` / `Deletion` separately (8 files total: 4 original + 4
-   downsampled).
+   `Insertion` / `Deletion` separately (16 files total: 4 each for
+   original, downsampled, and the two supplementary tables).
 
 ### Table columns
 
@@ -231,7 +278,9 @@ debugging), call `run_benchmark.sh` yourself:
 
 - `bed_tier` — one of `all`, `nogermlineinterference` (default),
   `nogermlinewithin50bp`, `all_hcr`, `all_giabhcr`,
-  `nogermlinewithin50bp_hcr`, `nogermlinewithin50bp_giabhcr`.
+  `nogermlinewithin50bp_hcr`, `nogermlinewithin50bp_giabhcr`, or any of
+  the 5 manuscript tiers + `_repcle8` (once
+  `generate_manuscript_table.sh` has built them).
 - `rescue_filter` — comma-separated exact FILTER values to rewrite to
   `PASS` before scoring. The manuscript tables use
   `"PONGnomad,PON;PONGnomad,PON"` throughout (relaxes PURPLE's PON/gnomAD
@@ -239,7 +288,13 @@ debugging), call `run_benchmark.sh` yourself:
   regions out of the comparison for every pipeline symmetrically).
 - Query calls are filtered to `PASS` + tumor `FMT/AF >= 0.10` + reference
   contigs only, then multiallelic-split and MNV-atomized, before being
-  compared against the truth VCF.
+  compared against the truth VCF. Only MNVs (same-length REF/ALT) are
+  atomized: complex indel+substitution records (lengths differ and not a
+  standard anchored indel, e.g. `ATGT>TG`, `CC>A`) atomize into
+  overlapping pieces that can't be applied together, so they're passed
+  through intact and aardvark matches them by haplotype. Only the
+  DRAGEN 4.5.4 downsampled VCF has such records (101); every other VCF
+  has none, so its query input is unchanged by this rule.
 - Ledger rows are written with two `dosage_scoring` values:
   `raw` (aardvark's native GT/BASEPAIR numbers) and `ea_corrected`
   (reclassifies EA>=1 FPs — sites the truth side already expects an
@@ -276,12 +331,13 @@ homopolymer/repeat length at that position), and finally `<Pipeline>_BD`
 /`<Pipeline>_EA` (aardvark's own TP/FN/FP verdict and dosage-match
 indicator — see above; this is what any TP/FN/FP reconstruction from
 this archive should use, not the FILTER/AF columns). The downsampled
-archive has no `Dragen_*` columns (not just blank ones) since no
-downsampled DRAGEN VCF exists.
+archive has no `Dragen_*` columns (not just blank ones):
+`generate_variant_archive.py` doesn't include the DRAGEN downsampled
+VCF yet.
 
 ## Region tiers
 
-Shipped in `data/reference_data/regions/` (primary/independent inputs
+Stored in `data/reference_data/regions/` (primary/independent inputs
 only — derived tiers are built by the scripts, see above):
 
 - `HG008-T_somatic_smvar_benchmark_v0.3_all.bed` — NIST's broadest
@@ -304,13 +360,52 @@ only — derived tiers are built by the scripts, see above):
 
 The 5 tiers used throughout the manuscript tables:
 
-| Tier key | BED tier | Built from |
-|---|---|---|
-| widest | `all` | shipped directly |
-| giabhcr | `all_giabhcr` | `all` ∩ `GIAB_hcr.bed` |
-| ultimahcr | `all_hcr` | `all` ∩ `ug_hcr_true.bed` |
-| giabhcr_ni50 | `nogermlinewithin50bp_giabhcr` | `nogermlinewithin50bp` ∩ `GIAB_hcr.bed` |
+| Tier key | BED tier | Built from                                 |
+|---|---|--------------------------------------------|
+| widest | `all` | stored directly                            |
+| giabhcr | `all_giabhcr` | `all` ∩ `GIAB_hcr.bed`                     |
+| ultimahcr | `all_hcr` | `all` ∩ `ug_hcr_true.bed`                  |
+| giabhcr_ni50 | `nogermlinewithin50bp_giabhcr` | `nogermlinewithin50bp` ∩ `GIAB_hcr.bed`    |
 | ultimahcr_ni50 | `nogermlinewithin50bp_hcr` | `nogermlinewithin50bp` ∩ `ug_hcr_true.bed` |
+
+### REP_C <= 8 tiers (supplementary table)
+
+`repc_gt8_mask.bed` covers every reference tandem repeat long enough that
+SAGE would annotate a variant there with `REP_C > 8`: repeat unit 1–5bp,
+>= 9 copies, padded 1bp each side (a left-aligned indel's anchor base
+sits just before the repeat). ~26.5 Mb in ~1.47M intervals, ~89%
+homopolymers. Each of the 5 tiers above minus the mask gives its
+`<tier>_repcle8` counterpart (each loses 7–25 Mb, 0.3–0.9%).
+
+It is a region mask rather than a filter on SAGE's `REP_C` INFO field
+because `REP_C` only exists on records SAGE called — truth FNs and every
+DRAGEN call carry none, so filtering on the field would drop variants
+unevenly across pipelines. Restricting the region instead removes the
+same variants from truth and every query. Validated against SAGE's own
+`REP_C` on every record of the Illumina/SBX/Ultima PURPLE VCFs: 100% of
+`REP_C > 8` calls fall inside the mask; 6–13% of `REP_C <= 8` calls are
+also masked (variants flush against a longer reference repeat than the
+one SAGE reports from its local read context).
+
+## Supplementary tables
+
+Same columns and scoring as the manuscript tables (see "Table columns"
+above).
+
+- **`Supplementary_PCR_vs_PCRfree*.tsv`** — Illumina SAGE/PURPLE on the
+  PCR-free library used everywhere else (`ILMN SAGE/PURPLE`, reusing the
+  `manuscript_ilmnpurple_*` runs) vs. the same HG008 pair with a
+  PCR-amplified library (`ILMN SAGE/PURPLE (PCR)`, `supp_pcr_*` runs), 5
+  tiers each. The two arms also differ in instrument (NovaSeq 6000 vs.
+  X) and depth, so the table shows their combined effect, not library
+  prep alone. Complements the repo-level
+  `supplementary_figure_hg008_pcr.ipynb`, which compares the same two
+  runs without a truth set (read processing, burden, overlap).
+- **`Supplementary_REPC_le8*.tsv`** — the 4 original pipelines on the 5
+  `_repcle8` tiers (`supp_repcle8_*` runs). Long repeats hold most of
+  this sample's truth indels (widest tier: insertions 5,018 → 704,
+  deletions 3,734 → 627; SNVs 9,454 → 8,910), so the indel rows here are
+  a much smaller, repeat-poor subset of the manuscript's.
 
 ## Notes on the downsampled VCFs
 
@@ -320,7 +415,17 @@ coverage, closer to expected daily-practice sequencing depth
 actual depth reduction differs substantially by technology, since the
 original files started at different depths (median normal/tumor DP):
 Illumina 99x/121x, SBX 43x/119x, Ultima 35x/119x — so Illumina was cut
-the most, Ultima barely at all. Bear this in mind before treating the
-downsampled comparison as an apples-to-apples "all three technologies
-at 30x/90x" result; it's better read as "cost of downsampling from
-each technology's own original depth."
+the most, Ultima barely at all.
+
+DRAGEN's downsampled VCF uses the same downsampled reads as Illumina's
+(median normal/tumor DP 34x/103x vs. 34x/107x), but it is not the same
+pipeline as DRAGEN's original: DRAGEN 4.5.4 re-aligned from FASTQ with
+a newer hash table and a newer systematic-noise baseline (v2.0), vs.
+4.2.4 run on existing BAMs (noise baseline v1.1). Its original vs.
+downsampled difference is therefore not depth alone, unlike the SAGE
+pipelines. 4.5.4 also writes nearby events as single complex records,
+which 4.2.4 never did — see the MNV-atomization note under
+"Step-by-step: manuscript tables". Its extra FPs at the wide tiers are
+mostly high-tumor-AF calls at sites where the shallow normal has few
+reads, consistent with germline variants leaking through (inferred from
+AF/depth, not checked against the reads).
