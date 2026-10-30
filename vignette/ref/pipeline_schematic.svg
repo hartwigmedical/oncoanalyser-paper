@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1060 570" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+  <rect width="1060" height="570" fill="#ffffff"/>
+
+  <!-- ═══════════════════════════════════════════════════
+       LAYER 1 — vignettes-base
+  ════════════════════════════════════════════════════ -->
+  <rect x="16" y="12" width="1026" height="206" rx="8"
+        fill="#fafafa" stroke="#cccccc" stroke-width="1.2"/>
+  <text x="30" y="30" font-size="11" font-weight="bold" fill="#555">vignettes-base pipeline</text>
+
+  <!-- DB sources label -->
+  <text x="30" y="47" font-size="9.5" fill="#888">HMF database tables</text>
+
+  <!-- DB pills — row 1 -->
+  <rect x="28"  y="51" width="76" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="66"  y="63" text-anchor="middle" font-size="8" fill="#444">cdr3Sequence</text>
+  <rect x="110" y="51" width="42" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="131" y="63" text-anchor="middle" font-size="8" fill="#444">chord</text>
+  <rect x="158" y="51" width="92" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="204" y="63" text-anchor="middle" font-size="8" fill="#444">clinical_summary</text>
+  <rect x="256" y="51" width="68" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="290" y="63" text-anchor="middle" font-size="8" fill="#444">copyNumber</text>
+  <rect x="330" y="51" width="42" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="351" y="63" text-anchor="middle" font-size="8" fill="#444">cuppa</text>
+  <rect x="378" y="51" width="80" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="418" y="63" text-anchor="middle" font-size="8" fill="#444">driverCatalog</text>
+  <rect x="464" y="51" width="86" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="507" y="63" text-anchor="middle" font-size="8" fill="#444">geneCopyNumber</text>
+  <rect x="556" y="51" width="84" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="598" y="63" text-anchor="middle" font-size="8" fill="#444">geneExpression</text>
+  <rect x="646" y="51" width="86" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="689" y="63" text-anchor="middle" font-size="8" fill="#444">germlineVariant</text>
+  <rect x="738" y="51" width="82" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="779" y="63" text-anchor="middle" font-size="8" fill="#444">panel_ampliseq</text>
+  <rect x="826" y="51" width="76" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="864" y="63" text-anchor="middle" font-size="8" fill="#444">panel_tso500</text>
+
+  <!-- DB pills — row 2 -->
+  <rect x="28"  y="72" width="50" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="53"  y="84" text-anchor="middle" font-size="8" fill="#444">patient</text>
+  <rect x="84"  y="72" width="46" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="107" y="84" text-anchor="middle" font-size="8" fill="#444">purity</text>
+  <rect x="136" y="72" width="46" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="159" y="84" text-anchor="middle" font-size="8" fill="#444">sample</text>
+  <rect x="188" y="72" width="60" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="218" y="84" text-anchor="middle" font-size="8" fill="#444">signature</text>
+  <rect x="254" y="72" width="84" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="296" y="84" text-anchor="middle" font-size="8" fill="#444">somaticVariant</text>
+  <rect x="344" y="72" width="62" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="375" y="84" text-anchor="middle" font-size="8" fill="#444">svCluster</text>
+  <rect x="412" y="72" width="56" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="440" y="84" text-anchor="middle" font-size="8" fill="#444">svFusion</text>
+  <rect x="474" y="72" width="80" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="514" y="84" text-anchor="middle" font-size="8" fill="#444">telomereLength</text>
+  <rect x="560" y="72" width="62" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="591" y="84" text-anchor="middle" font-size="8" fill="#444">treatment</text>
+  <rect x="628" y="72" width="98" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="677" y="84" text-anchor="middle" font-size="8" fill="#444">treatmentResponse</text>
+  <rect x="732" y="72" width="86" height="17" rx="4" fill="#e8e8e8" stroke="#bbb" stroke-width="1"/>
+  <text x="775" y="84" text-anchor="middle" font-size="8" fill="#444">virusAnnotation</text>
+
+  <!-- processing boxes -->
+  <rect x="28"  y="98"  width="136" height="50" rx="6" fill="#fff8e1" stroke="#f0c040" stroke-width="1.2"/>
+  <text x="96"  y="114" text-anchor="middle" font-size="9" font-weight="bold" fill="#7a5c00">0_queries</text>
+  <text x="96"  y="128" text-anchor="middle" font-size="8.5" fill="#555">somatic variants</text>
+  <text x="96"  y="140" text-anchor="middle" font-size="8.5" fill="#555">GIE (CN + somatic)</text>
+
+  <rect x="176" y="98"  width="136" height="50" rx="6" fill="#fff8e1" stroke="#f0c040" stroke-width="1.2"/>
+  <text x="244" y="114" text-anchor="middle" font-size="9" font-weight="bold" fill="#7a5c00">1_main / 0_main</text>
+  <text x="244" y="128" text-anchor="middle" font-size="8.5" fill="#555">CN, GIE, telomere</text>
+  <text x="244" y="140" text-anchor="middle" font-size="8.5" fill="#555">CDR3, aneuploidy</text>
+
+  <rect x="324" y="98"  width="152" height="50" rx="6" fill="#fff8e1" stroke="#f0c040" stroke-width="1.2"/>
+  <text x="400" y="114" text-anchor="middle" font-size="9" font-weight="bold" fill="#7a5c00">1_main / 1_drivers</text>
+  <text x="400" y="128" text-anchor="middle" font-size="8.5" fill="#555">driver catalog + fusions</text>
+  <text x="400" y="140" text-anchor="middle" font-size="8.5" fill="#555">actionability (protect)</text>
+
+  <rect x="488" y="98"  width="156" height="50" rx="6" fill="#fff8e1" stroke="#f0c040" stroke-width="1.2"/>
+  <text x="566" y="114" text-anchor="middle" font-size="9" font-weight="bold" fill="#7a5c00">2_signatures</text>
+  <text x="566" y="128" text-anchor="middle" font-size="8.5" fill="#555">trinucleotide counts</text>
+  <text x="566" y="140" text-anchor="middle" font-size="8.5" fill="#555">SBS fit → group alloc.</text>
+
+  <rect x="656" y="98"  width="120" height="50" rx="6" fill="#fff8e1" stroke="#f0c040" stroke-width="1.2"/>
+  <text x="716" y="114" text-anchor="middle" font-size="9" font-weight="bold" fill="#7a5c00">coverage queries</text>
+  <text x="716" y="128" text-anchor="middle" font-size="8.5" fill="#555">panel vs WGS</text>
+  <text x="716" y="140" text-anchor="middle" font-size="8.5" fill="#555">event coverage flags</text>
+
+  <rect x="790" y="98"  width="138" height="50" rx="6" fill="#fff8e1" stroke="#f0c040" stroke-width="1.2"/>
+  <text x="859" y="114" text-anchor="middle" font-size="9" font-weight="bold" fill="#7a5c00">RNA / clinical</text>
+  <text x="859" y="128" text-anchor="middle" font-size="8.5" fill="#555">ISOFOX pathway scores</text>
+  <text x="859" y="140" text-anchor="middle" font-size="8.5" fill="#555">clinical metadata</text>
+
+  <!-- output table pills -->
+  <text x="30" y="167" font-size="9.5" fill="#888">vignettes_hg38 tables</text>
+
+  <rect x="28"  y="173" width="66" height="22" rx="5" fill="#304b99" stroke="none"/>
+  <text x="61"  y="188" text-anchor="middle" font-size="9" font-weight="bold" fill="white">markers</text>
+  <rect x="100" y="173" width="58" height="22" rx="5" fill="#304b99" stroke="none"/>
+  <text x="129" y="188" text-anchor="middle" font-size="9" font-weight="bold" fill="white">drivers</text>
+  <rect x="164" y="173" width="88" height="22" rx="5" fill="#304b99" stroke="none"/>
+  <text x="208" y="188" text-anchor="middle" font-size="9" font-weight="bold" fill="white">actionability</text>
+  <rect x="258" y="173" width="58" height="22" rx="5" fill="#304b99" stroke="none"/>
+  <text x="287" y="188" text-anchor="middle" font-size="9" font-weight="bold" fill="white">circos</text>
+  <rect x="322" y="173" width="68" height="22" rx="5" fill="#304b99" stroke="none"/>
+  <text x="356" y="188" text-anchor="middle" font-size="9" font-weight="bold" fill="white">coverage</text>
+  <rect x="396" y="173" width="62" height="22" rx="5" fill="#304b99" stroke="none"/>
+  <text x="427" y="188" text-anchor="middle" font-size="9" font-weight="bold" fill="white">clinical</text>
+
+  <!-- ═══════════════════════════════════════════════════
+       Arrow between layers
+  ════════════════════════════════════════════════════ -->
+  <defs>
+    <marker id="arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 Z" fill="#304b99"/>
+    </marker>
+    <marker id="arrgray" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 Z" fill="#aaa"/>
+    </marker>
+  </defs>
+  <line x1="530" y1="220" x2="530" y2="234" stroke="#304b99" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="545" y="230" font-size="8.5" fill="#304b99">runQuery()</text>
+
+  <!-- ═══════════════════════════════════════════════════
+       LAYER 2 — vignettes-figures notebooks
+  ════════════════════════════════════════════════════ -->
+  <rect x="16" y="238" width="1026" height="268" rx="8"
+        fill="#fafafa" stroke="#cccccc" stroke-width="1.2"/>
+  <text x="30" y="256" font-size="11" font-weight="bold" fill="#555">vignettes-figures pipeline</text>
+
+  <!-- helpers strip -->
+  <text x="30" y="272" font-size="8.5" fill="#aaa">helpers:  init · shortcuts · map · colors · theme · reader · names · actionable_rules · coverage_rules · oncoplot_utils · thresholds · documentation</text>
+
+  <!-- Notebook boxes — 10 across, 84px wide, 8px gap (step=92) -->
+
+  <!-- 0 cohort  x=28 -->
+  <rect x="28"  y="280" width="84" height="186" rx="7" fill="#eef3ff" stroke="#304b99" stroke-width="1.5"/>
+  <text x="70"  y="298" text-anchor="middle" font-size="11" font-weight="bold" fill="#304b99">0</text>
+  <text x="70"  y="312" text-anchor="middle" font-size="10" fill="#222">cohort</text>
+  <line x1="36" y1="319" x2="104" y2="319" stroke="#304b99" stroke-width=".5" opacity=".3"/>
+  <text x="70"  y="333" text-anchor="middle" font-size="8" fill="#555">test_ids</text>
+  <text x="70"  y="345" text-anchor="middle" font-size="8" fill="#555">ref_ids</text>
+  <text x="70"  y="357" text-anchor="middle" font-size="8" fill="#555">→ cohorts.txt</text>
+  <text x="70"  y="458" text-anchor="middle" font-size="8" fill="#888">— input —</text>
+
+  <!-- 1 clinical  x=120 -->
+  <rect x="120" y="280" width="84" height="186" rx="7" fill="#eef3ff" stroke="#304b99" stroke-width="1.5"/>
+  <text x="162" y="298" text-anchor="middle" font-size="11" font-weight="bold" fill="#304b99">1</text>
+  <text x="162" y="312" text-anchor="middle" font-size="10" fill="#222">clinical</text>
+  <line x1="128" y1="319" x2="196" y2="319" stroke="#304b99" stroke-width=".5" opacity=".3"/>
+  <text x="162" y="333" text-anchor="middle" font-size="8" fill="#555">availability</text>
+  <text x="162" y="345" text-anchor="middle" font-size="8" fill="#555">treatment</text>
+  <text x="162" y="357" text-anchor="middle" font-size="8" fill="#555">response</text>
+  <text x="162" y="369" text-anchor="middle" font-size="8" fill="#555">biopsy type</text>
+  <text x="162" y="458" text-anchor="middle" font-size="8" fill="#304b99">clinical</text>
+
+  <!-- 2 signatures  x=212 -->
+  <rect x="212" y="280" width="84" height="186" rx="7" fill="#eef3ff" stroke="#304b99" stroke-width="1.5"/>
+  <text x="254" y="298" text-anchor="middle" font-size="11" font-weight="bold" fill="#304b99">2</text>
+  <text x="254" y="312" text-anchor="middle" font-size="10" fill="#222">signatures</text>
+  <line x1="220" y1="319" x2="288" y2="319" stroke="#304b99" stroke-width=".5" opacity=".3"/>
+  <text x="254" y="333" text-anchor="middle" font-size="8" fill="#555">group alloc.</text>
+  <text x="254" y="345" text-anchor="middle" font-size="8" fill="#555">circular plot</text>
+  <text x="254" y="458" text-anchor="middle" font-size="8" fill="#304b99">markers</text>
+
+  <!-- 3 markers  x=304 -->
+  <rect x="304" y="280" width="84" height="186" rx="7" fill="#eef3ff" stroke="#304b99" stroke-width="1.5"/>
+  <text x="346" y="298" text-anchor="middle" font-size="11" font-weight="bold" fill="#304b99">3</text>
+  <text x="346" y="312" text-anchor="middle" font-size="10" fill="#222">markers</text>
+  <line x1="312" y1="319" x2="380" y2="319" stroke="#304b99" stroke-width=".5" opacity=".3"/>
+  <text x="346" y="333" text-anchor="middle" font-size="8" fill="#555">tumor chars</text>
+  <text x="346" y="345" text-anchor="middle" font-size="8" fill="#555">genome struct</text>
+  <text x="346" y="357" text-anchor="middle" font-size="8" fill="#555">mut burden / SV</text>
+  <text x="346" y="369" text-anchor="middle" font-size="8" fill="#555">RNA landscape</text>
+  <text x="346" y="458" text-anchor="middle" font-size="8" fill="#304b99">markers</text>
+
+  <!-- 4 drivers  x=396 -->
+  <rect x="396" y="280" width="84" height="186" rx="7" fill="#eef3ff" stroke="#304b99" stroke-width="1.5"/>
+  <text x="438" y="298" text-anchor="middle" font-size="11" font-weight="bold" fill="#304b99">4</text>
+  <text x="438" y="312" text-anchor="middle" font-size="10" fill="#222">drivers</text>
+  <line x1="404" y1="319" x2="472" y2="319" stroke="#304b99" stroke-width=".5" opacity=".3"/>
+  <text x="438" y="333" text-anchor="middle" font-size="8" fill="#555">somatic oncoplot</text>
+  <text x="438" y="345" text-anchor="middle" font-size="8" fill="#555">germline oncoplot</text>
+  <text x="438" y="357" text-anchor="middle" font-size="8" fill="#555">pathway labels</text>
+  <text x="438" y="369" text-anchor="middle" font-size="8" fill="#555">Fisher highlights</text>
+  <text x="438" y="458" text-anchor="middle" font-size="8" fill="#304b99">drivers</text>
+
+  <!-- 5 actionable  x=488 -->
+  <rect x="488" y="280" width="84" height="186" rx="7" fill="#eef3ff" stroke="#304b99" stroke-width="1.5"/>
+  <text x="530" y="298" text-anchor="middle" font-size="11" font-weight="bold" fill="#304b99">5</text>
+  <text x="530" y="312" text-anchor="middle" font-size="10" fill="#222">actionable</text>
+  <line x1="496" y1="319" x2="564" y2="319" stroke="#304b99" stroke-width=".5" opacity=".3"/>
+  <text x="530" y="333" text-anchor="middle" font-size="8" fill="#555">oncoplot</text>
+  <text x="530" y="345" text-anchor="middle" font-size="8" fill="#555">evidence levels</text>
+  <text x="530" y="357" text-anchor="middle" font-size="8" fill="#555">best Tx option</text>
+  <text x="530" y="458" text-anchor="middle" font-size="8" fill="#304b99">actionability</text>
+
+  <!-- 6 circos  x=580 -->
+  <rect x="580" y="280" width="84" height="186" rx="7" fill="#eef3ff" stroke="#304b99" stroke-width="1.5"/>
+  <text x="622" y="298" text-anchor="middle" font-size="11" font-weight="bold" fill="#304b99">6</text>
+  <text x="622" y="312" text-anchor="middle" font-size="10" fill="#222">circos</text>
+  <line x1="588" y1="319" x2="656" y2="319" stroke="#304b99" stroke-width=".5" opacity=".3"/>
+  <text x="622" y="333" text-anchor="middle" font-size="8" fill="#555">.circos files</text>
+  <text x="622" y="345" text-anchor="middle" font-size="8" fill="#555">gene annots</text>
+  <text x="622" y="357" text-anchor="middle" font-size="8" fill="#555">CN amp/del</text>
+  <text x="622" y="458" text-anchor="middle" font-size="8" fill="#304b99">circos</text>
+
+  <!-- 7 coverage  x=672 -->
+  <rect x="672" y="280" width="84" height="186" rx="7" fill="#eef3ff" stroke="#304b99" stroke-width="1.5"/>
+  <text x="714" y="298" text-anchor="middle" font-size="11" font-weight="bold" fill="#304b99">7</text>
+  <text x="714" y="312" text-anchor="middle" font-size="10" fill="#222">coverage</text>
+  <line x1="680" y1="319" x2="748" y2="319" stroke="#304b99" stroke-width=".5" opacity=".3"/>
+  <text x="714" y="333" text-anchor="middle" font-size="8" fill="#555">panel vs WGS</text>
+  <text x="714" y="345" text-anchor="middle" font-size="8" fill="#555">missed events</text>
+  <text x="714" y="357" text-anchor="middle" font-size="8" fill="#555">evidence levels</text>
+  <text x="714" y="458" text-anchor="middle" font-size="8" fill="#304b99">coverage</text>
+
+  <!-- 8 schemas  x=764 -->
+  <rect x="764" y="280" width="84" height="186" rx="7" fill="#eef3ff" stroke="#304b99" stroke-width="1.5"/>
+  <text x="806" y="298" text-anchor="middle" font-size="11" font-weight="bold" fill="#304b99">8</text>
+  <text x="806" y="312" text-anchor="middle" font-size="10" fill="#222">schemas</text>
+  <line x1="772" y1="319" x2="840" y2="319" stroke="#304b99" stroke-width=".5" opacity=".3"/>
+  <text x="806" y="333" text-anchor="middle" font-size="8" fill="#555">tumor schema PNG</text>
+  <text x="806" y="345" text-anchor="middle" font-size="8" fill="#555">cohorts.txt</text>
+  <text x="806" y="458" text-anchor="middle" font-size="8" fill="#304b99">— ref/schemas —</text>
+
+  <!-- 9 build  x=856 -->
+  <rect x="856" y="280" width="168" height="186" rx="7" fill="#fff0f5" stroke="#e52f28" stroke-width="1.5"/>
+  <text x="940" y="298" text-anchor="middle" font-size="11" font-weight="bold" fill="#e52f28">9</text>
+  <text x="940" y="312" text-anchor="middle" font-size="10" fill="#222">build</text>
+  <line x1="864" y1="319" x2="1016" y2="319" stroke="#e52f28" stroke-width=".5" opacity=".3"/>
+  <text x="940" y="333" text-anchor="middle" font-size="8" fill="#555">load all .rds</text>
+  <text x="940" y="345" text-anchor="middle" font-size="8" fill="#555">assemble 4-column layout</text>
+  <text x="940" y="357" text-anchor="middle" font-size="8" fill="#555">logo · title · annotations</text>
+  <text x="940" y="369" text-anchor="middle" font-size="8" fill="#555">documentation.r</text>
+  <text x="940" y="381" text-anchor="middle" font-size="8" fill="#555">ggsave PNG</text>
+  <text x="940" y="458" text-anchor="middle" font-size="8" fill="#e52f28">*.rds → vignette.png</text>
+
+  <!-- notebook arrows -->
+  <defs>
+    <marker id="arrnb" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#aaa"/>
+    </marker>
+  </defs>
+  <line x1="112" y1="373" x2="118" y2="373" stroke="#aaa" stroke-width="1" marker-end="url(#arrnb)"/>
+  <line x1="204" y1="373" x2="210" y2="373" stroke="#aaa" stroke-width="1" marker-end="url(#arrnb)"/>
+  <line x1="296" y1="373" x2="302" y2="373" stroke="#aaa" stroke-width="1" marker-end="url(#arrnb)"/>
+  <line x1="388" y1="373" x2="394" y2="373" stroke="#aaa" stroke-width="1" marker-end="url(#arrnb)"/>
+  <line x1="480" y1="373" x2="486" y2="373" stroke="#aaa" stroke-width="1" marker-end="url(#arrnb)"/>
+  <line x1="572" y1="373" x2="578" y2="373" stroke="#aaa" stroke-width="1" marker-end="url(#arrnb)"/>
+  <line x1="664" y1="373" x2="670" y2="373" stroke="#aaa" stroke-width="1" marker-end="url(#arrnb)"/>
+  <line x1="756" y1="373" x2="762" y2="373" stroke="#aaa" stroke-width="1" marker-end="url(#arrnb)"/>
+  <line x1="848" y1="373" x2="854" y2="373" stroke="#aaa" stroke-width="1" marker-end="url(#arrnb)"/>
+
+  <!-- .rds save labels -->
+  <text x="28" y="482" font-size="8.5" fill="#aaa">Notebooks 1–8 each save figures to READY_FIG as .rds  ·  9_build loads all .rds and assembles the final vignette PNG</text>
+
+  <!-- output arrow -->
+  <line x1="940" y1="466" x2="940" y2="500" stroke="#e52f28" stroke-width="1.2" marker-end="url(#arr)"/>
+  <rect x="872" y="502" width="136" height="28" rx="5" fill="#e52f28"/>
+  <text x="940" y="521" text-anchor="middle" font-size="9.5" font-weight="bold" fill="white">vignette.png</text>
+</svg>
