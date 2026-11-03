@@ -7,20 +7,23 @@ Code and data used in the cross-platform publication of the
 
 ## Figure notebooks
 
-Each manuscript figure is one self-contained notebook in the repository root. Extended Figures 1
-and 3 are not generated here.
+Each manuscript figure is one self-contained notebook in the repository root. Notebooks are named
+for their analysis rather than their figure number: `fig_` for a main figure, `ext_` for an
+extended/supplementary figure.
 
 
 | Notebook | Contents |
 | --- | --- |
-| `figure_1_panel_d_redux_overview.ipynb` | Figure 1D — REDUX overview — unmapping, deduplication/consensus, base-quality recalibration, microsatellite jitter (GIAB HG008) |
-| `figure_2.ipynb` | Figure 2 — REDUX read processing and tumour molecular profiles across Illumina, Roche and Ultima |
-| `figure_3.ipynb` | Figure 3 — fresh-frozen vs FFPE (patients) and tumour/normal vs tumour-only (cell lines) |
-| `figure_4.ipynb` | Figure 4 — WGS tumour/normal truth vs targeted panel |
-| `extended_figure_2.ipynb` | Extended Figure 2 — per-region SNV & indel spectra and VAF across the three platforms |
-| `extended_figure_4.ipynb` | Extended Figure 4 — fresh-frozen vs FFPE, sequencing QC and GIAB high-confidence benchmark |
-| `extended_figure_5.ipynb` | Extended Figure 5 — why FFPE misses variants called in fresh-frozen |
-| `extended_figure_6.ipynb` | Extended Figure 6 — tumour/normal vs tumour-only, benchmarked on Illumina and compared across the three platforms |
+| `fig_redux_overview.ipynb` | REDUX overview — unmapping, deduplication/consensus, base-quality recalibration, microsatellite jitter (GIAB HG008) |
+| `fig_cross_platform.ipynb` | REDUX read processing and tumour molecular profiles across Illumina, Roche and Ultima |
+| `fig_ffpe_and_tumor_only.ipynb` | Fresh-frozen vs FFPE (patients) and tumour/normal vs tumour-only (cell lines) |
+| `fig_wgs_vs_panel.ipynb` | WGS tumour/normal truth vs targeted panel |
+| `ext_cross_platform_region_spectra.ipynb` | Per-region SNV & indel spectra and VAF across the three platforms |
+| `ext_ffpe_qc_benchmark.ipynb` | Fresh-frozen vs FFPE, sequencing QC and GIAB high-confidence benchmark |
+| `ext_ffpe_false_negatives.ipynb` | Why FFPE misses variants called in fresh-frozen |
+| `ext_tumor_only_benchmark.ipynb` | Tumour/normal vs tumour-only, benchmarked on Illumina and compared across the three platforms |
+| `ext_hg008_pcr_vs_pcr_free.ipynb` | GIAB HG008 PCR-free vs PCR-amplified library prep — REDUX, variant burden and overlap |
+| `ext_compar_concordance.ipynb` | COMPAR concordance of reportable output — FF tumour/normal vs tumour-only, NovaSeq 6000 vs X |
 
 Every notebook opens with a **Data access** section that lists exactly which files it reads,
 how large they are, and the three ways to supply them. Read that first.
@@ -93,14 +96,27 @@ with `FileNotFoundError`.
 Inputs are staged into a local cache under `data/`, and figures are written to `figures/`. Both
 directories are git-ignored and created on first run, so a fresh clone contains no data.
 
+### COMPAR output
+
+`ext_compar_concordance.ipynb` is the exception to the buckets: it reads
+[COMPAR](https://github.com/hartwigmedical/hmftools/tree/master/compar) output, which is not
+published. Run COMPAR on two sets of oncoanalyser run folders yourself (the notebook's Data access
+section has the command) and set `COMPAR_OUTPUT` in its Configuration cell to each run's
+reportable output folder, local or `gs://`.
+
+Its root-cause panel is based on **manual curation** of this paper's discordant records, written
+into the notebook itself (`MANUAL_ANNOTATIONS`). On your own data that panel shows every
+record as *Not annotated*: you have to redo the curation and adapt the root-cause code to get a
+similar figure.
+
 ### Reference data
 
 Two notebooks need a reference file that is not part of either bucket:
 
-* `extended_figure_4.ipynb` and `extended_figure_5.ipynb` download the **GIAB
+* `ext_ffpe_qc_benchmark.ipynb` and `ext_ffpe_false_negatives.ipynb` download the **GIAB
   high-confidence region BED** (GRCh38, chr-prefixed, NISTv3.3.2 HG001) straight from the NIST
   GIAB FTP site over https — 10 MB, no credentials.
-* `figure_4.ipynb` needs the targeted panel's capture regions. By default it reads them from
+* `fig_wgs_vs_panel.ipynb` needs the targeted panel's capture regions. By default it reads them from
   the panel runs' own `bamtools/<sample>/<sample>.bam_metric.target_regions.tsv`, which covers
   exactly the same bases as the HMF oncopanel v3 capture BED; set `PANEL_BED` only if you have
   your own capture BED.
@@ -109,10 +125,10 @@ Two notebooks need a reference file that is not part of either bucket:
 
 * **Python >= 3.11** (the figures were generated with 3.14.7).
 * **[Google Cloud SDK](https://cloud.google.com/sdk/docs/install)** — only when reading inputs
-  from `gs://`. The notebooks shell out to `gsutil`, and `extended_figure_5` additionally
+  from `gs://`. The notebooks shell out to `gsutil`, and `ext_ffpe_false_negatives` additionally
   calls `gcloud auth print-access-token` to hand htslib a bearer token. Authenticate once with
   `gcloud auth login`. Not needed for local inputs.
-* **`samtools` and `tabix` on `PATH`** — only for `extended_figure_5`, which reads BAM/VCF
+* **`samtools` and `tabix` on `PATH`** — only for `ext_ffpe_false_negatives`, which reads BAM/VCF
   files through their indexes (remote or local). Skip these if you do not run that notebook.
 * Optional: the figures use **Arial**; without it matplotlib falls back to Helvetica and then
   DejaVu Sans, which changes the typeface but nothing else.
