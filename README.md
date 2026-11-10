@@ -25,6 +25,35 @@ extended/supplementary figure.
 | `ext_hg008_pcr_vs_pcr_free.ipynb` | GIAB HG008 PCR-free vs PCR-amplified library prep — REDUX, variant burden and overlap |
 | `ext_compar_concordance.ipynb` | COMPAR concordance of reportable output — FF tumour/normal vs tumour-only, NovaSeq 6000 vs X |
 
+### Notebook → manuscript figure
+
+Each notebook also states its figure number directly under its title.
+
+**Main figures**
+
+| Figure | Content | Source |
+| --- | --- | --- |
+| 1 | Schematics plus REDUX principle | Panel D: `fig_redux_overview.ipynb`; other panels not made here |
+| 2 | Multiplatform performance on cell lines, incl. HG008 benchmark | `fig_cross_platform.ipynb` |
+| 3 | Multimodal: FFPE, tumour-only | `fig_ffpe_and_tumor_only.ipynb` |
+| 4 | Application: panel, exome | `fig_wgs_vs_panel.ipynb` |
+| 5 | TCR, telomere, viral |  |
+| 6 | Longitudinal analysis |  |
+| 7 | Vignette |  |
+
+**Extended figures**
+
+| Figure | Content | Source |
+| --- | --- | --- |
+| 1 | SAGE variant call visualisation vs IGV | oncoanalyser pipeline output (SAGE visualisation) |
+| 2 | SNV and indel mutational profiles, shared and private variants per technology | `ext_cross_platform_region_spectra.ipynb` |
+| 3 | PCR-free vs PCR, HG008 Illumina | `ext_hg008_pcr_vs_pcr_free.ipynb` |
+| 4 | Circos plots HG008 Illumina, Roche, Ultima | oncoanalyser pipeline output (Circos plots) |
+| 5 | FF vs FFPE differences in detail | `ext_ffpe_qc_benchmark.ipynb` |
+| 6 | FFPE false negatives plus SAGE visualisation | `ext_ffpe_false_negatives.ipynb` |
+| 7 | Tumour-only multiplatform | `ext_tumor_only_benchmark.ipynb` |
+| 8 | COMPAR results, Illumina T/N vs tumour-only, reportable only, 5 cell lines | `ext_compar_concordance.ipynb` |
+
 Every notebook opens with a **Data access** section that lists exactly which files it reads,
 how large they are, and the three ways to supply them. Read that first.
 
