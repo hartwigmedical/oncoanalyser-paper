@@ -413,12 +413,13 @@ The downsampled files (`*.ds.*`) target ~30x normal / ~90x tumor
 coverage, closer to expected daily-practice sequencing depth
 (cost-driven) than the original full-depth files. The *amount* of
 actual depth reduction differs substantially by technology, since the
-original files started at different depths (median normal/tumor DP):
-Illumina 99x/121x, SBX 43x/119x, Ultima 35x/119x — so Illumina was cut
+original files started at different depths (normal/tumor mean coverage
+from bam-tools BamMetrics, as reported by ORANGE): Illumina 102x/114x,
+SBX 42x/112x, Ultima 32x/91x — so Illumina was cut
 the most, Ultima barely at all.
 
 DRAGEN's downsampled VCF uses the same downsampled reads as Illumina's
-(median normal/tumor DP 34x/103x vs. 34x/107x), but it is not the same
+(normal/tumor mean coverage 33x/94x, BamMetrics), but it is not the same
 pipeline as DRAGEN's original: DRAGEN 4.5.4 re-aligned from FASTQ with
 a newer hash table and a newer systematic-noise baseline (v2.0), vs.
 4.2.4 run on existing BAMs (noise baseline v1.1). Its original vs.
