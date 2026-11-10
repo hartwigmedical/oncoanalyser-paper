@@ -37,9 +37,9 @@ Each notebook also states its figure number directly under its title.
 | 2 | Multiplatform performance on cell lines, incl. HG008 benchmark | `fig_cross_platform.ipynb` |
 | 3 | Multimodal: FFPE, tumour-only | `fig_ffpe_and_tumor_only.ipynb` |
 | 4 | Application: panel, exome | `fig_wgs_vs_panel.ipynb` |
-| 5 | TCR, telomere, viral | Not made here |
-| 6 | Longitudinal analysis | Not made here |
-| 7 | Vignette | Not made here |
+| 5 | TCR, telomere, viral |  |
+| 6 | Longitudinal analysis |  |
+| 7 | Vignette |  |
 
 **Extended figures**
 
