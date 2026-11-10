@@ -49,12 +49,11 @@ mkdir -p "$DATA_DIR"
 CELLLINE_RUNS="gs://hartwig-oapaper-celllines/HG008/wgs"
 
 # seq_tech:bucket_tech_folder
-# SBX: the bucket still holds a SAGE 5.0-beta.12 / PURPLE 4.4-beta.12 run, not
-# the final sbx-r-f release (SAGE 5.0 / PURPLE 4.4) the manuscript tables
-# use; it is being replaced. Check `##sageVersion=5.0` in the fetched
-# HG008T.sage.somatic.vcf.gz header before running anything on SBX.
+# SBX: roche_axelios1 holds the final sbx-r-f release (SAGE 5.0 / PURPLE 4.4)
+# the manuscript tables use. The older roche_sbx folder is a deeper SAGE
+# 5.0-beta.12 / PURPLE 4.4-beta.12 run and must not be used.
 PIPELINE_SOURCES=(
-  "SBX:roche_sbx"
+  "SBX:roche_axelios1"
   "Ilmn:illumina_novaseq6000"
   "Ultima:ultima_ug100"
 )
