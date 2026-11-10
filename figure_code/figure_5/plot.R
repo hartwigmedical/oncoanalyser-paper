@@ -152,7 +152,12 @@ base_theme <- theme_minimal(base_size = 9) +
     legend.position = "right",
     legend.box = "vertical",
     legend.title = element_text(size = 8),
-    legend.text = element_text(size = 7.5)
+    legend.text = element_text(size = 7.5),
+    # Compact keys keep each legend within the height of its own panel.
+    legend.key.height = grid::unit(3.2, "mm"),
+    legend.key.width = grid::unit(4.2, "mm"),
+    legend.key.spacing.y = grid::unit(0.6, "mm"),
+    legend.spacing.y = grid::unit(2, "mm")
   )
 
 hide_x <- theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
@@ -161,11 +166,14 @@ scale_x_tumor <- function(...) {
   scale_x_discrete(limits = ordered_labels, drop = FALSE, ...)
 }
 
+# oob_keep: stacked shares can sum to 100 + 1e-14, which the default would
+# drop as out of range, silently removing that bar's top segment.
 scale_y_percent <- scale_y_continuous(
   limits = c(0, 100),
   breaks = seq(0, 100, 20),
   labels = function(z) paste0(z, "%"),
-  expand = c(0, 0)
+  expand = c(0, 0),
+  oob = scales::oob_keep
 )
 
 boxplot_with_medians <- function(medians, width) {
@@ -199,7 +207,7 @@ panel_a <- ggplot(t_cell, aes(tumor_label, t_cell_score)) +
   ) +
   coord_cartesian(ylim = c(0, 2)) +
   labs(
-    y = "PASS TRA/TRD + TRB\nassigned reads /\ntumor median coverage\n(pseudo-log scale)",
+    y = "T-cell score\nlog(CDR3 rearrangements /\ntumor median coverage)",
     caption = "A  Coverage-adjusted T-cell score — diamonds indicate medians"
   ) +
   base_theme +
@@ -214,7 +222,7 @@ panel_b <- ggplot(telomere, aes(tumor_label, log2_ratio)) +
   scale_x_tumor() +
   coord_cartesian(ylim = c(-5, 5)) +
   labs(
-    y = "log2(somatic /\ngermline telomere length)",
+    y = "Somatic/Germline\ntelomere length (log2)",
     caption = "B  Paired tumor–normal telomere-length change — diamonds indicate medians"
   ) +
   base_theme +
@@ -235,7 +243,7 @@ panel_c <- ggplot(virus_composition, aes(tumor_label, percent, fill = virus_cate
   coord_cartesian(clip = "off") +
   scale_fill_manual(name = "Virus category", values = VIRUS_COLORS, drop = FALSE) +
   labs(
-    y = "Virus-positive\ndonors (%)",
+    y = "Percentage of virus positive\npatients (number) and\ncomposition (bars)",
     caption = "C  Virus presence — percentage of donors; values show prevalence"
   ) +
   base_theme +
@@ -262,7 +270,7 @@ panel_d <- ggplot(fusion_bins, aes(x, percent, fill = bin, colour = mechanism)) 
   scale_colour_manual(name = "Detection mechanism", values = MECHANISM_COLORS, drop = FALSE) +
   guides(colour = guide_legend(override.aes = list(fill = FUSION_COLORS[["21–50"]]))) +
   labs(
-    y = "Donors with RNA data (%)",
+    y = "Percentage of patients with\ndetected vs expressed\n(DNA vs RNA) fusion genes",
     caption = "D  Donor-level DNA versus RNA fusion-count distributions"
   ) +
   base_theme +

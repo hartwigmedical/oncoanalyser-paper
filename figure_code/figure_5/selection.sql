@@ -76,9 +76,11 @@ reported_virus AS (
         OR LOWER(COALESCE(v.virusName, '')) LIKE '%merkel%' THEN 'Merkel cell polyomavirus'
       WHEN UPPER(COALESCE(v.interpretation, '')) = 'HBV'
         OR LOWER(COALESCE(v.virusName, '')) LIKE '%hepatitis b%' THEN 'HBV'
-      WHEN UPPER(COALESCE(v.interpretation, '')) IN ('HHV-8', 'KSHV') THEN 'HHV-8/KSHV'
-      WHEN UPPER(COALESCE(v.interpretation, '')) = 'CMV'
-        OR LOWER(COALESCE(v.virusName, '')) LIKE '%cytomegalo%' THEN 'CMV'
+      WHEN UPPER(COALESCE(v.interpretation, '')) = 'HHV8'
+        OR LOWER(COALESCE(v.virusName, '')) LIKE '%herpesvirus 8%'
+        OR LOWER(COALESCE(v.virusName, '')) LIKE '%kaposi%' THEN 'HHV-8/KSHV'
+      WHEN LOWER(COALESCE(v.virusName, '')) LIKE '%cytomegalo%'
+        OR LOWER(COALESCE(v.virusName, '')) LIKE '%betaherpesvirus 5%' THEN 'CMV'
       ELSE 'Other virus'
     END AS virus_category
   FROM cohort AS c
