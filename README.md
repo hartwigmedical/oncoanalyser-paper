@@ -38,7 +38,7 @@ Each notebook also states its figure number directly under its title.
 | 3 | Multimodal: FFPE, tumour-only | `fig_ffpe_and_tumor_only.ipynb` |
 | 4 | Application: panel, exome | `fig_wgs_vs_panel.ipynb` |
 | 5 | TCR, telomere, viral |  |
-| 6 | Longitudinal analysis |  |
+| 6 | Longitudinal analysis | `figure_code/figure_6/fig_longitudinal.Rmd` (R Markdown; see its README) |
 | 7 | Vignette |  |
 
 **Extended figures**
