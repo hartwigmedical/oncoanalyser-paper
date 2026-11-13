@@ -1,0 +1,421 @@
+---
+title: "Wisp ctDNA detection — COLO829 titration on Illumina and Ultima"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+knit: (function(input, ...) rmarkdown::render(input, output_dir = file.path(dirname(input), "figures"), envir = globalenv()))
+---
+
+**Manuscript figure: Main Figure 6** · *See the README for the full list*
+
+Tumor-informed **Wisp** output for a COLO829 titration series (0, 0.1, 1, 10 and 100% COLO829 DNA),
+sequenced as ctDNA on Illumina and on Ultima. Both ctDNA datasets are analysed against the same
+Illumina tumour/normal WGS of COLO829.
+
+| Panel | Content |
+|-------|---------|
+| **A** | SNV tumour fraction per sample: Wisp-reported value, value before clonality correction, confidence interval and per-sample limit of detection (LoD) |
+| **B** | What the SNV LoD is built from: tumour SNVs used, sequencing depth at tumour SNV sites in plasma, and the resulting SNV LoD |
+| **C** | Tumour fraction per Wisp method (SNV, LOH, CNV) when detected |
+
+Point the Configuration section at other runs — or your own oncoanalyser output — and knit;
+see **Data access** below.
+
+## Data access
+
+Every input is public **oncoanalyser** output in the Google Cloud Storage bucket
+`gs://hartwig-oapaper-celllines`. This figure reads only the Wisp summary file of each plasma
+sample — 10 files of about 1.3 KB each, 13 KB in total:
+
+```text
+<run folder>/wisp/<tumour id>_<plasma id>.wisp.summary.tsv
+```
+
+One oncoanalyser run per platform, with one sub-folder per plasma sample:
+
+```text
+gs://hartwig-oapaper-celllines/COLO829/ctdna/<platform>/bwa/wisp/oa3/<plasma id>/
+```
+
+See `README.md` next to this file for how the data were generated, the tissue reference and
+the sample-name mapping.
+
+The plasma sample ids differ per platform (`10ng<x>p-tr` on Illumina, `Colomimic<x>` on Ultima).
+Nothing is inferred from these names: the expected tumour fraction of every sample is set
+explicitly in `SAMPLES` below.
+
+There are three ways to supply the data:
+
+1. **Read straight from the bucket** (the default). Needs the
+   [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) (`gsutil`). The 10 files are
+   staged into `data/` next to this file and re-used afterwards.
+2. **Copy the data down first**, e.g.
+   `gcloud storage cp -r gs://hartwig-oapaper-celllines/COLO829/ctdna <local dir>`,
+   then set `DATA_ROOT` to that local directory.
+3. **Run it on your own Wisp output.** Point `run_folder()` / `SAMPLES` at any oncoanalyser 3.x
+   run folders that contain `wisp/*.wisp.summary.tsv`.
+
+Figures (and the knitted HTML, when using the RStudio *Knit* button) are written to `figures/`
+next to this file. `data/` and `figures/` are git-ignored.
+
+**R packages:** `rmarkdown`, `knitr`, `dplyr`, `tidyr`, `readr`, `stringr`, `ggplot2`, `patchwork`.
+
+## 1 · Configuration
+
+```{r config}
+# ============================================================================
+# CONFIGURATION — edit these to point at your own oncoanalyser output.
+# ============================================================================
+DATA_ROOT <- "gs://hartwig-oapaper-celllines"   # or a local directory (absolute, or ~ is fine)
+
+# One folder per plasma sample: <DATA_ROOT>/COLO829/ctdna/<platform>/bwa/wisp/oa3/<plasma id>
+run_folder <- function(platform, plasma_id) {
+  file.path(sub("/+$", "", DATA_ROOT), "COLO829", "ctdna", platform, "bwa", "wisp", "oa3", plasma_id)
+}
+
+# Every plasma sample in the figure, with its expected (spiked-in) COLO829 tumour fraction.
+# `setup` is the label used in the figure legend.
+SAMPLES <- tibble::tribble(
+  ~setup,           ~platform,               ~plasma_id,     ~expected_pct,
+  "Illumina ctDNA", "illumina_novaseq6000",  "10ng0p-tr",    0,
+  "Illumina ctDNA", "illumina_novaseq6000",  "10ng01p-tr",   0.1,
+  "Illumina ctDNA", "illumina_novaseq6000",  "10ng1p-tr",    1,
+  "Illumina ctDNA", "illumina_novaseq6000",  "10ng10p-tr",   10,
+  "Illumina ctDNA", "illumina_novaseq6000",  "10ng100p-tr",  100,
+  "Ultima ctDNA",   "ultima_ug100",          "Colomimic0",   0,
+  "Ultima ctDNA",   "ultima_ug100",          "Colomimic01",  0.1,
+  "Ultima ctDNA",   "ultima_ug100",          "Colomimic1",   1,
+  "Ultima ctDNA",   "ultima_ug100",          "Colomimic10",  10,
+  "Ultima ctDNA",   "ultima_ug100",          "Colomimic100", 100
+)
+
+SETUP_COLOURS <- c("Illumina ctDNA" = "#FF6B00", "Ultima ctDNA" = "#343434")
+
+# Output: half an A4 page lengthwise, full A4 width; all text at least FONT_SIZE_PT
+FIG_WIDTH_MM  <- 210
+FIG_HEIGHT_MM <- 297 / 2
+FONT_SIZE_PT  <- 9
+PNG_DPI       <- 600
+SAVE_PDF      <- FALSE   # vector PDF in addition to the PNG
+
+DATA_DIR   <- "data"      # local cache for staged inputs (relative to this file)
+FIGURE_DIR <- "figures"   # output directory (relative to this file)
+```
+
+```{r libs, message=FALSE, warning=FALSE}
+library(dplyr)
+library(tidyr)
+library(readr)
+library(stringr)
+library(ggplot2)
+library(patchwork)
+library(knitr)
+options(scipen = 999)
+```
+
+## 2 · Locating and staging Wisp output
+
+Finds the Wisp summary file in every configured run folder and copies it into `DATA_DIR`
+(remote) or reads it in place (local). A missing file stops the analysis with the path it
+looked for, rather than silently dropping a sample.
+
+```{r locate}
+is_remote <- function(p) startsWith(p, "gs://")
+
+# Finds the gsutil executable.
+# Checks the PATH first, then the usual Google Cloud SDK install locations.
+find_gsutil <- function() {
+  on_path <- Sys.which("gsutil")
+  if (nzchar(on_path)) return(unname(on_path))
+  candidates <- c(
+    "~/google-cloud-sdk/bin/gsutil",                                        # default installer
+    "/opt/homebrew/bin/gsutil", "/usr/local/bin/gsutil",                    # Homebrew
+    "/opt/homebrew/share/google-cloud-sdk/bin/gsutil",
+    "/usr/local/share/google-cloud-sdk/bin/gsutil",
+    "/usr/lib/google-cloud-sdk/bin/gsutil", "/snap/bin/gsutil"              # Linux packages
+  )
+  hit <- candidates[file.exists(path.expand(candidates))]
+  if (length(hit) > 0) return(path.expand(hit[1]))
+  stop("gsutil was not found. Install the Google Cloud SDK ",
+       "(https://cloud.google.com/sdk/docs/install), or add its bin/ folder to PATH, e.g. in ",
+       "~/.Renviron: PATH=${PATH}:${HOME}/google-cloud-sdk/bin. Alternatively, copy the data ",
+       "locally and set DATA_ROOT to that folder.", call. = FALSE)
+}
+GSUTIL <- NULL   # resolved on first use, so local-only runs never need gsutil
+
+# Runs gsutil and returns its stdout lines. stderr is kept separate, so progress and
+# update notices never end up in a file listing. Returns NULL when the target does not
+# exist; stops on any other failure (authentication, permissions, typo'd bucket).
+gsutil <- function(...) {
+  if (is.null(GSUTIL)) GSUTIL <<- find_gsutil()
+  err_file <- tempfile()
+  on.exit(unlink(err_file))
+  out <- suppressWarnings(system2(GSUTIL, c(...), stdout = TRUE, stderr = err_file))
+  err <- readLines(err_file, warn = FALSE)
+  status <- attr(out, "status")
+  if (!is.null(status) && status != 0) {
+    if (any(grepl("matched no objects|No URLs matched|404", err, ignore.case = TRUE))) return(NULL)
+    stop("gsutil ", paste(c(...), collapse = " "), " failed:\n", paste(err, collapse = "\n"), call. = FALSE)
+  }
+  out
+}
+
+# Returns the local path of the one *.wisp.summary.tsv in <run>/wisp/
+locate_summary <- function(run, platform, plasma_id) {
+  if (is_remote(run)) {
+    hits <- gsutil("ls", paste0(run, "/wisp/*.wisp.summary.tsv"))
+  } else {
+    hits <- Sys.glob(file.path(path.expand(run), "wisp", "*.wisp.summary.tsv"))
+  }
+  hits <- hits[nzchar(hits)]
+  if (length(hits) != 1) {
+    stop(sprintf("Expected exactly one *.wisp.summary.tsv in %s/wisp/, found %d.",
+                 run, length(hits)), call. = FALSE)
+  }
+  if (!is_remote(run)) return(hits)
+
+  dest <- file.path(DATA_DIR, platform, plasma_id, basename(hits))
+  if (!file.exists(dest)) {
+    dir.create(dirname(dest), recursive = TRUE, showWarnings = FALSE)
+    gsutil("cp", hits, dest)
+  }
+  dest
+}
+
+SAMPLES <- SAMPLES %>%
+  mutate(run          = mapply(run_folder, platform, plasma_id),
+         summary_file = mapply(locate_summary, run, platform, plasma_id))
+
+SAMPLES %>% select(setup, plasma_id, expected_pct, run) %>% kable()
+```
+
+## 3 · Loading
+
+```{r load}
+read_summary <- function(f) {
+  read_tsv(f, show_col_types = FALSE, progress = FALSE,
+           col_types = cols(.default = col_character()))
+}
+
+num_cols <- c("SNVPurity", "RawSNVPurity", "SNVPurityLow", "SNVPurityHigh", "SNVLod",
+              "CalcVariants", "TotalVariants", "WeightedAvgDepth", "BqrThreshold",
+              "LOHPurity", "CopyNumberPurity")
+
+wisp <- SAMPLES %>%
+  mutate(data = lapply(summary_file, read_summary)) %>%
+  unnest(data) %>%
+  mutate(across(all_of(num_cols), as.numeric),
+         across(c(SNV_MRD, LOH_MRD, CNV_MRD), ~ toupper(.x) == "TRUE"),
+         setup = factor(setup, levels = names(SETUP_COLOURS)))
+
+# Sanity check: SNVLod is a fraction (not %), and equals the lod= value Wisp lists in
+# BqrExtraInfo for the base-quality threshold it selected (the one with the lowest LoD).
+bqr_lod <- mapply(function(info, thr) {
+  as.numeric(str_match(info, paste0("BqrThreshold\\(", thr, " [^)]*lod=([0-9.eE+-]+)"))[, 2])
+}, wisp$BqrExtraInfo, wisp$BqrThreshold)
+stopifnot(isTRUE(all.equal(unname(bqr_lod), wisp$SNVLod)))
+
+wisp %>%
+  arrange(expected_pct, setup) %>%
+  transmute(setup, plasma_id, `expected %` = expected_pct, SNV_MRD,
+            `reported TF %`  = signif(SNVPurity * 100, 3),
+            `TF before clonality correction %` = signif(RawSNVPurity * 100, 3),
+            `CI %`           = paste0(signif(SNVPurityLow * 100, 3), "–", signif(SNVPurityHigh * 100, 3)),
+            `SNV LoD %`      = signif(SNVLod * 100, 3),
+            `SNVs used`      = CalcVariants,
+            `depth at SNV sites` = WeightedAvgDepth,
+            BqrThreshold, ClonalMethod) %>%
+  kable()
+```
+
+Column notes (Wisp 1.3.1):
+
+- `SNVPurity` is the reported tumour fraction; 0 when ctDNA is not detected (`SNV_MRD = FALSE`,
+  one-sided Poisson p ≥ 0.01 against the background error rate).
+- `RawSNVPurity` is the estimate before the clonality correction (`ClonalMethod`).
+- `SNVPurityLow`/`SNVPurityHigh` come from the 1% and 99% Poisson quantiles of the
+  tumour-allele fragment count, i.e. a 98% interval.
+- `SNVLod` is the tumour fraction at which detection would reach p = 0.01. Wisp evaluates
+  base-quality thresholds 0, 38, 42 and 45 and keeps the one with the lowest LoD
+  (`BqrThreshold`); this also changes `CalcVariants`.
+
+## 4 · Plotting style
+
+```{r style}
+nd_floor   <- 1e-3    # y-position (%) used to draw 'reported 0 / not detected'
+x_zero_pos <- 0.003   # x-position (%) used to draw the 0% sample on a log axis
+dodge      <- setNames(10^c(-0.07, 0.07), names(SETUP_COLOURS))
+
+levels_pct <- sort(unique(wisp$expected_pct))
+x_breaks   <- ifelse(levels_pct == 0, x_zero_pos, levels_pct)
+x_labels   <- format(levels_pct, drop0trailing = TRUE, scientific = FALSE, trim = TRUE)
+min_pos    <- min(levels_pct[levels_pct > 0])
+x_title    <- "COLO829 expected tumor fraction [%]"
+
+pct_label <- function(p) factor(format(p, drop0trailing = TRUE, scientific = FALSE, trim = TRUE),
+                                 levels = x_labels)
+plain_num <- function(b) format(b, scientific = FALSE, drop0trailing = TRUE, trim = TRUE, big.mark = ",")
+
+theme_fig <- theme_classic(base_size = FONT_SIZE_PT) +
+  theme(panel.grid.major.y = element_line(colour = "grey92", linewidth = 0.3),
+        legend.position = "bottom", legend.box = "horizontal",
+        legend.title = element_blank(),
+        plot.tag = element_text(face = "bold"))
+```
+
+## 5 · Panel A — SNV tumour fraction, confidence interval and LoD
+
+```{r panel-a, fig.width=7, fig.height=6}
+plot_df <- wisp %>%
+  mutate(x       = ifelse(expected_pct == 0, x_zero_pos, expected_pct) * dodge[as.character(setup)],
+         rep_pct = SNVPurity * 100,
+         raw_pct = RawSNVPurity * 100,
+         lod_pct = SNVLod * 100,
+         lo_pct  = SNVPurityLow * 100,
+         hi_pct  = SNVPurityHigh * 100,
+         rep_y   = ifelse(rep_pct > 0, rep_pct, nd_floor),
+         raw_y   = ifelse(raw_pct > 0, raw_pct, nd_floor))
+
+p_a <- ggplot(plot_df) +
+  # 'not detected' band (Wisp reports 0)
+  annotate("rect", xmin = 0, xmax = Inf, ymin = nd_floor / 1.6, ymax = nd_floor * 1.6,
+           fill = "grey93") +
+  annotate("text", x = 150, y = nd_floor, label = "Wisp reports 0 (not detected)",
+           hjust = 1, size = FONT_SIZE_PT / .pt, colour = "grey40") +
+  # expected identity line + expected 0
+  annotate("segment", x = min_pos, xend = 100, y = min_pos, yend = 100,
+           linetype = "dashed", colour = "grey55") +
+  annotate("point", x = x_zero_pos, y = nd_floor, shape = 4, colour = "grey55", size = 1.8) +
+  # per-sample LoD (horizontal dash)
+  geom_segment(aes(x = x / 1.12, xend = x * 1.12, y = lod_pct, yend = lod_pct,
+                   colour = setup, linetype = "SNV LOD"), linewidth = 0.6) +
+  # confidence interval
+  geom_linerange(aes(x = x, ymin = pmax(lo_pct, nd_floor), ymax = pmax(hi_pct, nd_floor),
+                     colour = setup), linewidth = 0.4,
+                 data = ~ filter(.x, hi_pct > 0)) +
+  # estimate before clonality correction (open) and Wisp-reported estimate (filled)
+  geom_point(aes(x = x, y = raw_y, colour = setup, shape = "Before clonality correction"),
+             size = 2, stroke = 0.6, fill = "white") +
+  geom_point(aes(x = x, y = rep_y, fill = setup, shape = "Wisp reported"),
+             size = 1.3, colour = "white", stroke = 0.25) +
+  scale_x_log10(breaks = x_breaks, labels = x_labels, limits = c(0.0022, 160)) +
+  scale_y_log10(breaks = c(nd_floor, 0.01, 0.1, 1, 10, 100),
+                labels = c("0", "0.01", "0.1", "1", "10", "100"),
+                limits = c(nd_floor / 1.6, 160)) +
+  scale_colour_manual(values = SETUP_COLOURS, guide = "none") +
+  scale_fill_manual(values = SETUP_COLOURS,
+                    guide = guide_legend(override.aes = list(shape = 21, size = 2), order = 1)) +
+  scale_shape_manual(values = c("Wisp reported" = 21, "Before clonality correction" = 21),
+                     guide = guide_legend(override.aes = list(
+                       fill = c("white", "grey30"), colour = c("grey30", "white"),
+                       size = c(2, 1.3)), order = 2)) +
+  scale_linetype_manual(values = c("SNV LOD" = "solid"),
+                        guide = guide_legend(override.aes = list(colour = "grey30"), order = 3)) +
+  labs(x = x_title, y = "Wisp SNV tumor fraction [%]") +
+  theme_fig
+p_a
+```
+
+## 6 · Panel B — what the SNV LoD is built from
+
+| Sub-panel | Wisp column |
+|---|---|
+| Tumor SNVs used | `CalcVariants` |
+| Sequencing depth at tumor SNV sites in plasma | `WeightedAvgDepth` |
+| SNV LOD [%] | `SNVLod` × 100 (Wisp stores a fraction) |
+
+```{r panel-b, fig.width=5, fig.height=8}
+lod_vars <- c("Tumor SNVs used", "Sequencing depth at tumor SNV sites in plasma", "SNV LOD [%]")
+
+lod_long <- wisp %>%
+  transmute(setup, x_lab = pct_label(expected_pct),
+            `Tumor SNVs used` = CalcVariants,
+            `Sequencing depth at tumor SNV sites in plasma` = WeightedAvgDepth,
+            `SNV LOD [%]` = SNVLod * 100) %>%
+  pivot_longer(-c(setup, x_lab)) %>%
+  mutate(name = factor(name, levels = lod_vars))
+
+p_b <- ggplot(lod_long, aes(x = x_lab, y = value, colour = setup, group = setup)) +
+  geom_line(linewidth = 0.4, alpha = 0.5) +
+  geom_point(aes(fill = setup), shape = 21, colour = "white", size = 1.8, stroke = 0.25) +
+  facet_wrap(~ name, scales = "free_y", ncol = 1) +
+  expand_limits(y = 0) +
+  scale_y_continuous(labels = plain_num, expand = expansion(mult = c(0, 0.08))) +
+  scale_colour_manual(values = SETUP_COLOURS, guide = "none") +
+  scale_fill_manual(values = SETUP_COLOURS) +
+  labs(x = x_title, y = NULL) +
+  theme_fig +
+  theme(strip.background = element_blank(), strip.text = element_text(face = "bold", hjust = 0))
+p_b
+
+wisp %>% group_by(setup) %>%
+  summarise(`mean SNV LoD %` = signif(mean(SNVLod) * 100, 2)) %>% kable()
+```
+
+## 7 · Panel C — tumour fraction per Wisp method
+
+Wisp estimates the tumour fraction from tumour SNVs, from allelic imbalance in tumour LOH
+regions, and from the tumour copy-number profile. Each has its own detection call
+(`SNV_MRD`, `LOH_MRD`, `CNV_MRD`). Tiles show the estimate when detected; ND = not detected.
+
+```{r panel-c, fig.width=7, fig.height=3.8}
+c_df <- wisp %>%
+  select(setup, expected_pct, SNV_MRD, SNVPurity, LOH_MRD, LOHPurity, CNV_MRD, CopyNumberPurity) %>%
+  rename(SNV_TF = SNVPurity, LOH_TF = LOHPurity, CNV_TF = CopyNumberPurity) %>%
+  pivot_longer(-c(setup, expected_pct), names_to = c("modality", ".value"), names_sep = "_") %>%
+  mutate(modality = factor(modality, levels = c("CNV", "LOH", "SNV")),
+         x_lab    = pct_label(expected_pct),
+         lab      = ifelse(MRD, paste0(signif(TF * 100, 2), "%"), "ND")) %>%
+  complete(setup, x_lab, modality, fill = list(lab = "not sequenced", MRD = NA)) %>%
+  mutate(tile = case_when(is.na(MRD) ~ "Not sequenced",
+                          MRD        ~ as.character(setup),
+                          TRUE       ~ "Not detected"))
+
+p_c <- ggplot(c_df, aes(x = x_lab, y = modality)) +
+  geom_tile(aes(fill = tile), colour = "white", linewidth = 0.8) +
+  geom_text(aes(label = lab, colour = tile), size = FONT_SIZE_PT / .pt) +
+  facet_wrap(~ setup, ncol = 1, drop = FALSE) +
+  scale_fill_manual(values = c(SETUP_COLOURS, "Not detected" = "grey90", "Not sequenced" = "white")) +
+  scale_colour_manual(values = c(setNames(rep("white", length(SETUP_COLOURS)), names(SETUP_COLOURS)),
+                                 "Not detected" = "grey40", "Not sequenced" = "grey65"), guide = "none") +
+  labs(x = x_title, y = NULL) +
+  theme_minimal(base_size = FONT_SIZE_PT) +
+  theme(panel.grid = element_blank(), legend.position = "none",
+        strip.text = element_text(face = "bold", hjust = 0),
+        plot.tag = element_text(face = "bold"))
+p_c
+```
+
+## 8 · Combined figure
+
+```{r combined, fig.width=210/25.4, fig.height=297/2/25.4, dpi=200}
+# one shared legend: keep panel A's, drop the duplicate ones from B and C
+fig <- (p_a | (p_b + guides(fill = "none"))) / (p_c + guides(fill = "none")) +
+  plot_layout(heights = c(1.9, 1), widths = c(1.1, 1), guides = "collect") +
+  plot_annotation(tag_levels = "A") &
+  theme(text        = element_text(size = FONT_SIZE_PT),
+        axis.text   = element_text(size = FONT_SIZE_PT),
+        axis.title  = element_text(size = FONT_SIZE_PT),
+        legend.text = element_text(size = FONT_SIZE_PT),
+        strip.text  = element_text(size = FONT_SIZE_PT, face = "bold", hjust = 0),
+        legend.position = "bottom", legend.box = "horizontal",
+        legend.margin = margin(0, 0, 0, 0), legend.box.spacing = unit(2, "pt"),
+        plot.tag = element_text(face = "bold", size = FONT_SIZE_PT + 2))
+fig
+
+dir.create(FIGURE_DIR, recursive = TRUE, showWarnings = FALSE)
+out <- file.path(FIGURE_DIR, "fig_longitudinal")
+ggsave(paste0(out, ".png"), fig, width = FIG_WIDTH_MM, height = FIG_HEIGHT_MM,
+       units = "mm", dpi = PNG_DPI, bg = "white")
+if (SAVE_PDF) {
+  # standard pdf device (cairo_pdf needs XQuartz on macOS)
+  ggsave(paste0(out, ".pdf"), fig, width = FIG_WIDTH_MM, height = FIG_HEIGHT_MM,
+         units = "mm", device = "pdf", useDingbats = FALSE)
+}
+```
+
+```{r session}
+sessionInfo()
+```
